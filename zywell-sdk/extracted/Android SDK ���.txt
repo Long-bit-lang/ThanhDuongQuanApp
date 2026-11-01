@@ -1,0 +1,1 @@
+Development toolkit for Android printer operation including complete SDK and sample code
