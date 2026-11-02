@@ -40,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivityPOS";
     private static final String ACTION_USB_PERMISSION = "com.thanhduong.pos.USB_PERMISSION";
     private static final String PREF_SERVER_URL = "pref_server_url";
-    private static final String DEFAULT_SERVER_URL = "http://192.168.1.22:5173"; // Local dev or Render URL
+    private static final String DEFAULT_SERVER_URL = "https://thanhduongquanapp.onrender.com";
 
     public static IMyBinder myBinder;
     public static boolean IS_CONNECTED = false;
