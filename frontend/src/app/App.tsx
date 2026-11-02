@@ -11,6 +11,7 @@ import { MenuManagement } from '../features/menu/MenuManagement';
 import { StaffManagement } from '../features/staff/StaffManagement';
 import { RevenueReport } from '../features/reports/RevenueReport';
 import { AuditLogView } from '../features/audit/AuditLogView';
+import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 
 // Phase 1 Diagnostic Views (Preserved in 'Kiểm tra hệ thống' tab)
 import { HealthCard } from '../features/health/components/HealthCard';
@@ -519,10 +520,15 @@ const MainPOSApp: React.FC = () => {
       )}
 
       {receiptInvoiceId && (
-        <ReceiptModal
-          invoiceId={receiptInvoiceId}
-          onClose={() => setReceiptInvoiceId(null)}
-        />
+        <ErrorBoundary
+          fallbackTitle="Không thể hiển thị phiếu thanh toán"
+          onReset={() => setReceiptInvoiceId(null)}
+        >
+          <ReceiptModal
+            invoiceId={receiptInvoiceId}
+            onClose={() => setReceiptInvoiceId(null)}
+          />
+        </ErrorBoundary>
       )}
 
       {mergeSplitConfig.isOpen && (

@@ -4,6 +4,7 @@ import { apiClient } from '../../../shared/api/client';
 import { X, Receipt, Tag, Sliders, CreditCard, Printer, CheckCircle } from 'lucide-react';
 import { Button } from '../../../shared/components/Button';
 import { useIsMobile } from '../../../shared/hooks/useIsMobile';
+import { formatCurrency, formatQuantity } from '../../../shared/utils/formatters';
 
 interface BillingModalProps {
   sessionDetails: SessionDetails;
@@ -104,11 +105,6 @@ export const BillingModal: React.FC<BillingModalProps> = ({
     }
   };
 
-  const formatCurrency = (val?: number) => `${Math.round(val ?? 0).toLocaleString('vi-VN')}đ`;
-  const formatQuantity = (qty: number) => {
-    if (Number.isInteger(qty)) return qty.toString();
-    return parseFloat(qty.toFixed(3)).toString();
-  };
 
   return (
     <div
@@ -275,14 +271,14 @@ export const BillingModal: React.FC<BillingModalProps> = ({
                 <span>{formatCurrency(invoice.subtotal)}</span>
               </div>
 
-              {invoice.discount_total > 0 && (
+              {Number(invoice.discount_total) > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f87171' }}>
                   <span>Giảm giá:</span>
                   <span>-{formatCurrency(invoice.discount_total)}</span>
                 </div>
               )}
 
-              {invoice.adjustment_total !== 0 && (
+              {Number(invoice.adjustment_total) !== 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fbbf24' }}>
                   <span>Điều chỉnh hóa đơn:</span>
                   <span>{formatCurrency(invoice.adjustment_total)}</span>

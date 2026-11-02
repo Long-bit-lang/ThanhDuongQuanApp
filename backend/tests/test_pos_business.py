@@ -550,7 +550,7 @@ async def test_duplicate_and_subsequent_order_items_sync_with_invoice_and_receip
     # Check receipt has 24 cans
     receipt_data = (await client.get(f"/api/v1/invoices/{invoice_id}/receipt", headers=auth_headers(test_cashier))).json()
     assert len(receipt_data["items"]) == 1
-    assert receipt_data["items"][0]["quantity"] == 24
+    assert Decimal(str(receipt_data["items"][0]["quantity"])) == Decimal("24")
     assert Decimal(str(receipt_data["subtotal"])) == Decimal("360000.00")
 
     # 5. Order 24 MORE cans of Huda (Duplicate item accumulation: 24 -> 48)
@@ -564,14 +564,14 @@ async def test_duplicate_and_subsequent_order_items_sync_with_invoice_and_receip
     # 6. Verify invoice immediately updated to 48 cans, total 720,000 VND
     inv_updated = (await client.get(f"/api/v1/invoices/{invoice_id}", headers=auth_headers(test_cashier))).json()
     assert len(inv_updated["items"]) == 1
-    assert inv_updated["items"][0]["quantity"] == 48
+    assert Decimal(str(inv_updated["items"][0]["quantity"])) == Decimal("48")
     assert Decimal(str(inv_updated["subtotal"])) == Decimal("720000.00")
     assert Decimal(str(inv_updated["final_total"])) == Decimal("720000.00")
 
     # 7. Verify receipt immediately reflects 48 cans, total 720,000 VND
     receipt_updated = (await client.get(f"/api/v1/invoices/{invoice_id}/receipt", headers=auth_headers(test_cashier))).json()
     assert len(receipt_updated["items"]) == 1
-    assert receipt_updated["items"][0]["quantity"] == 48
+    assert Decimal(str(receipt_updated["items"][0]["quantity"])) == Decimal("48")
     assert Decimal(str(receipt_updated["subtotal"])) == Decimal("720000.00")
     assert Decimal(str(receipt_updated["final_total"])) == Decimal("720000.00")
 

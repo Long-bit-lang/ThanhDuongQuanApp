@@ -4,6 +4,7 @@ import { apiClient } from '../../../shared/api/client';
 import { X, Printer, CheckCircle } from 'lucide-react';
 import { Button } from '../../../shared/components/Button';
 import { useIsMobile } from '../../../shared/hooks/useIsMobile';
+import { formatCurrency, formatQuantity } from '../../../shared/utils/formatters';
 
 interface ReceiptModalProps {
   invoiceId: string;
@@ -76,11 +77,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ invoiceId, onClose }
     }
   };
 
-  const formatCurrency = (val: number) => `${Math.round(val).toLocaleString('vi-VN')}đ`;
-  const formatQuantity = (qty: number) => {
-    if (Number.isInteger(qty)) return qty.toString();
-    return parseFloat(qty.toFixed(3)).toString();
-  };
 
   return (
     <div
@@ -255,14 +251,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ invoiceId, onClose }
                   <span>{formatCurrency(receipt.subtotal)}</span>
                 </div>
 
-                {receipt.discount_total > 0 && (
+                {Number(receipt.discount_total) > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', marginBottom: '0.25rem' }}>
                     <span>Giảm giá:</span>
                     <span>-{formatCurrency(receipt.discount_total)}</span>
                   </div>
                 )}
 
-                {receipt.adjustment_total !== 0 && (
+                {Number(receipt.adjustment_total) !== 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                     <span>Điều chỉnh:</span>
                     <span>{formatCurrency(receipt.adjustment_total)}</span>
@@ -286,7 +282,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ invoiceId, onClose }
                   </div>
                 ))}
 
-                {receipt.difference > 0 && (
+                {Number(receipt.difference) > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', marginTop: '0.25rem' }}>
                     <span>Chênh lệch sau điều chỉnh:</span>
                     <span style={{ fontWeight: 700 }}>{formatCurrency(receipt.difference)}</span>

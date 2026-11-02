@@ -4,6 +4,7 @@ import { apiClient } from '../../../shared/api/client';
 import { X, ArrowRightLeft, Split, CheckSquare, Square } from 'lucide-react';
 import { Button } from '../../../shared/components/Button';
 import { useIsMobile } from '../../../shared/hooks/useIsMobile';
+import { formatCurrency, formatQuantity } from '../../../shared/utils/formatters';
 
 interface MergeSplitModalProps {
   mode: 'MERGE' | 'SPLIT';
@@ -299,11 +300,11 @@ export const MergeSplitModal: React.FC<MergeSplitModalProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {isSelected ? <CheckSquare size={16} color="var(--accent-gold)" /> : <Square size={16} color="var(--text-muted)" />}
                         <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                          {it.product_name} (x{Number.isInteger(it.quantity) ? it.quantity : parseFloat(it.quantity.toFixed(3))})
+                          {it.product_name} (x{formatQuantity(it.quantity)})
                         </span>
                       </div>
                       <span style={{ fontWeight: 700, color: 'var(--accent-gold)', fontSize: '0.85rem' }}>
-                        {Math.round(it.line_total).toLocaleString('vi-VN')}đ
+                        {formatCurrency(it.line_total)}
                       </span>
                     </div>
                   );

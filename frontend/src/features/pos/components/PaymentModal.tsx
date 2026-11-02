@@ -4,6 +4,7 @@ import { apiClient } from '../../../shared/api/client';
 import { X, Banknote, QrCode, CheckCircle, AlertCircle, Printer, ArrowRight } from 'lucide-react';
 import { Button } from '../../../shared/components/Button';
 import { useIsMobile } from '../../../shared/hooks/useIsMobile';
+import { formatCurrency } from '../../../shared/utils/formatters';
 
 interface PaymentModalProps {
   invoice: InvoiceData;
@@ -24,7 +25,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [loadingQr, setLoadingQr] = useState(false);
 
   // Cash calculation
-  const totalDue = invoice.final_total ?? invoice.total_after_discount ?? 0;
+  const totalDue = Number(invoice.final_total ?? invoice.total_after_discount ?? 0);
   const [cashGiven, setCashGiven] = useState(totalDue.toString());
 
   // Idempotency key generated once per modal session
@@ -76,7 +77,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     }
   };
 
-  const formatCurrency = (val: number) => `${Math.round(val).toLocaleString('vi-VN')}đ`;
 
   return (
     <div

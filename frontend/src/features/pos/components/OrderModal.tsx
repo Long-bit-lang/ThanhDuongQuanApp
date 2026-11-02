@@ -22,6 +22,7 @@ import {
   Edit3,
 } from 'lucide-react';
 import { Button } from '../../../shared/components/Button';
+import { formatCurrency, formatQuantity } from '../../../shared/utils/formatters';
 
 interface OrderModalProps {
   table: DiningTableData;
@@ -217,12 +218,6 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     }
   };
 
-  const formatCurrency = (val: number) => `${Math.round(val).toLocaleString('vi-VN')}đ`;
-
-  const formatQuantity = (qty: number) => {
-    if (Number.isInteger(qty)) return qty.toString();
-    return parseFloat(qty.toFixed(3)).toString();
-  };
 
   const handleStartEdit = (it: OrderItemData) => {
     setEditingItem(it);

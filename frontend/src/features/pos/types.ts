@@ -55,23 +55,23 @@ export interface InvoiceData {
   invoice_number: string;
   session_id: string;
   status: 'DRAFT' | 'PAID';
-  subtotal: number;
-  discount_total: number;
-  total_after_discount: number;
-  adjustment_total: number;
-  final_total: number;
+  subtotal: number | string;
+  discount_total: number | string;
+  total_after_discount: number | string;
+  adjustment_total: number | string;
+  final_total: number | string;
   created_at: string;
   items?: Array<{
     id: string;
     product_name: string;
-    unit_price: number;
-    quantity: number;
-    line_total: number;
+    unit_price: number | string;
+    quantity: number | string;
+    line_total: number | string;
   }>;
   payments?: Array<{
     id: string;
     method: string;
-    amount: number;
+    amount: number | string;
     status: string;
     created_at: string;
   }>;
@@ -80,7 +80,7 @@ export interface InvoiceData {
 export interface VietQrMockData {
   invoice_id: string;
   invoice_number: string;
-  amount: number;
+  amount: number | string;
   bank_name: string;
   account_no: string;
   account_name: string;
@@ -101,24 +101,24 @@ export interface ReceiptData {
   cashier_name: string;
   items: Array<{
     name: string;
-    quantity: number;
-    unit_price: number;
-    line_total: number;
+    quantity: number | string;
+    unit_price: number | string;
+    line_total: number | string;
   }>;
-  subtotal: number;
-  discount_total: number;
-  total_after_discount: number;
-  adjustment_total: number;
-  final_total: number;
+  subtotal: number | string;
+  discount_total: number | string;
+  total_after_discount: number | string;
+  adjustment_total: number | string;
+  final_total: number | string;
   payments: Array<{
     method: string;
-    amount: number;
+    amount: number | string;
     status: string;
     time: string;
   }>;
-  total_paid: number;
-  balance_due: number;
-  difference: number;
+  total_paid: number | string;
+  balance_due: number | string;
+  difference: number | string;
   thank_you_note: string;
   qr_code_url?: string;
   qr_code_data?: string;
