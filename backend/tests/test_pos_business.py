@@ -578,3 +578,94 @@ async def test_duplicate_and_subsequent_order_items_sync_with_invoice_and_receip
     # Clean up: close session
     await client.post(f"/api/v1/sessions/{session_id}/close", headers=auth_headers(test_waiter))
 
+
+@pytest.mark.asyncio
+async def test_decimal_quantity_and_order_item_quantity_update(
+    client: AsyncClient,
+    test_waiter: User,
+    test_cashier: User,
+    test_owner: User,
+):
+    """Verifies that items can be ordered with decimal quantities (e.g. 0.5, 0.22 kg),
+    and that their quantity can be updated dynamically via PATCH /order-items/{id}/quantity."""
+    # 1. Create product: Mực lá tươi 500,000 VND/kg
+    muc_res = await client.post(
+        "/api/v1/products",
+        json={"name": f"Mực lá tươi {uuid.uuid4().hex[:4]}", "sale_price": "500000.00", "is_available": True},
+        headers=auth_headers(test_owner),
+    )
+    assert muc_res.status_code == 201
+    muc_id = muc_res.json()["id"]
+
+    # 2. Open session
+    tables = (await client.get("/api/v1/tables", headers=auth_headers(test_waiter))).json()
+    table = next(t for t in tables if t["status"] == "AVAILABLE")
+    sess_res = await client.post(f"/api/v1/tables/{table['id']}/open-session", headers=auth_headers(test_waiter))
+    assert sess_res.status_code == 201
+    session_id = sess_res.json()["id"]
+
+    # 3. Order 0.5 kg of Mực
+    order_res = await client.post(
+        f"/api/v1/sessions/{session_id}/orders",
+        json={"items": [{"product_id": muc_id, "quantity": "0.5", "note": "Cân tại bể"}]},
+        headers=auth_headers(test_waiter),
+    )
+    assert order_res.status_code == 201
+
+    # Fetch session items
+    sess_data = (await client.get(f"/api/v1/sessions/{session_id}", headers=auth_headers(test_waiter))).json()
+    assert len(sess_data["active_items"]) == 1
+    item = sess_data["active_items"][0]
+    assert Decimal(str(item["quantity"])) == Decimal("0.5")
+    assert Decimal(str(item["line_total"])) == Decimal("250000.00")
+    assert Decimal(str(sess_data["running_subtotal"])) == Decimal("250000.00")
+
+    # 4. Create draft invoice
+    inv_res = await client.post(f"/api/v1/sessions/{session_id}/invoice", headers=auth_headers(test_cashier))
+    assert inv_res.status_code == 201
+    invoice_id = inv_res.json()["id"]
+
+    receipt_initial = (await client.get(f"/api/v1/invoices/{invoice_id}/receipt", headers=auth_headers(test_cashier))).json()
+    assert Decimal(str(receipt_initial["items"][0]["quantity"])) == Decimal("0.5")
+    assert Decimal(str(receipt_initial["subtotal"])) == Decimal("250000.00")
+    assert "0.5 x 500.000đ" in receipt_initial["formatted_text"]
+
+    # 5. Update quantity to 0.22 kg via PATCH /api/v1/order-items/{item_id}/quantity
+    patch_res = await client.patch(
+        f"/api/v1/order-items/{item['id']}/quantity",
+        json={"quantity": "0.22"},
+        headers=auth_headers(test_waiter),
+    )
+    assert patch_res.status_code == 200
+    patch_data = patch_res.json()
+    assert Decimal(str(patch_data["quantity"])) == Decimal("0.22")
+    assert Decimal(str(patch_data["line_total"])) == Decimal("110000.00")
+
+    # 6. Verify session details updated
+    sess_updated = (await client.get(f"/api/v1/sessions/{session_id}", headers=auth_headers(test_waiter))).json()
+    assert Decimal(str(sess_updated["active_items"][0]["quantity"])) == Decimal("0.22")
+    assert Decimal(str(sess_updated["running_subtotal"])) == Decimal("110000.00")
+
+    # 7. Verify invoice and receipt dynamically synced to 0.22 kg
+    inv_updated = (await client.get(f"/api/v1/invoices/{invoice_id}", headers=auth_headers(test_cashier))).json()
+    assert Decimal(str(inv_updated["items"][0]["quantity"])) == Decimal("0.22")
+    assert Decimal(str(inv_updated["subtotal"])) == Decimal("110000.00")
+    assert Decimal(str(inv_updated["final_total"])) == Decimal("110000.00")
+
+    receipt_updated = (await client.get(f"/api/v1/invoices/{invoice_id}/receipt", headers=auth_headers(test_cashier))).json()
+    assert Decimal(str(receipt_updated["items"][0]["quantity"])) == Decimal("0.22")
+    assert Decimal(str(receipt_updated["subtotal"])) == Decimal("110000.00")
+    assert "0.22 x 500.000đ" in receipt_updated["formatted_text"]
+
+    # 8. Attempting invalid quantity (<= 0) should be rejected (422)
+    invalid_res = await client.patch(
+        f"/api/v1/order-items/{item['id']}/quantity",
+        json={"quantity": "0"},
+        headers=auth_headers(test_waiter),
+    )
+    assert invalid_res.status_code == 422
+
+    # Clean up: close session
+    await client.post(f"/api/v1/sessions/{session_id}/close", headers=auth_headers(test_waiter))
+
+

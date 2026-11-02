@@ -241,12 +241,13 @@ public class ZywellPrinterBridge {
             for (int i = 0; i < items.length(); i++) {
                 JSONObject it = items.getJSONObject(i);
                 String name = it.optString("name", "");
-                int qty = it.optInt("quantity", 1);
+                double qty = it.optDouble("quantity", 1);
                 double price = it.optDouble("unit_price", 0);
                 double total = it.optDouble("line_total", 0);
 
+                String qtyStr = (qty == (long) qty) ? String.format("%d", (long) qty) : new DecimalFormat("#.###").format(qty);
                 out.write((name + "\n").getBytes("UTF-8"));
-                String left = "   " + qty + " x " + df.format(price) + "đ";
+                String left = "   " + qtyStr + " x " + df.format(price) + "đ";
                 String right = df.format(total) + "đ";
                 out.write(padLine(left, right, 48).getBytes("UTF-8"));
                 out.write("\n".getBytes("UTF-8"));

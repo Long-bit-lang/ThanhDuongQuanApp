@@ -15,7 +15,7 @@ from app.modules.audit.models import AuditLog
 from app.modules.catalog.models import Product
 from app.modules.floor.models import DiningTable, ServiceSession, SessionTable
 from app.modules.service.models import Order, OrderItem
-from app.modules.service.schemas import CreateOrder, AddItem, CancelItem, TransferItems
+from app.modules.service.schemas import CreateOrder, AddItem, UpdateItemQuantity, CancelItem, TransferItems
 from app.modules.billing.models import Invoice, InvoiceAdjustment
 from app.modules.billing.services import sync_session_invoice
 
@@ -194,10 +194,10 @@ async def create_order(
                     existing_active.note = line.note
             added_items_details.append({
                 "name": p.name,
-                "quantity": line.quantity,
+                "quantity": float(line.quantity),
                 "price": float(p.sale_price),
                 "accumulated": True,
-                "total_quantity": existing_active.quantity,
+                "total_quantity": float(existing_active.quantity),
             })
         else:
             item = OrderItem(
@@ -210,7 +210,7 @@ async def create_order(
                 note=line.note,
             )
             db.add(item)
-            added_items_details.append({"name": p.name, "quantity": line.quantity, "price": float(p.sale_price)})
+            added_items_details.append({"name": p.name, "quantity": float(line.quantity), "price": float(p.sale_price)})
 
     # Audit log
     db.add(AuditLog(
@@ -295,7 +295,7 @@ async def add_item_to_order(
         details={
             "session_id": str(order.session_id),
             "product_name": product.name,
-            "quantity": payload.quantity,
+            "quantity": float(payload.quantity),
             "unit_price": float(product.sale_price),
         },
     ))
@@ -306,10 +306,62 @@ async def add_item_to_order(
         "session_id": str(order.session_id),
         "item_id": str(item.id),
         "product_name": product.name,
-        "quantity": payload.quantity,
+        "quantity": float(item.quantity),
     })
 
     return {"id": item.id, "product_name": item.product_name_snapshot, "quantity": item.quantity}
+
+
+@router.patch("/order-items/{item_id}/quantity")
+async def update_item_quantity(
+    item_id: UUID,
+    payload: UpdateItemQuantity,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Updates the quantity of an active order item (supporting decimal values like 0.5, 0.22)."""
+    item = await db.scalar(select(OrderItem).where(OrderItem.id == item_id).with_for_update())
+    if not item:
+        raise HTTPException(status_code=404, detail="Không tìm thấy món gọi")
+    if item.status != "ACTIVE":
+        raise HTTPException(status_code=409, detail="Chỉ có thể chỉnh sửa số lượng món đang phục vụ")
+
+    old_quantity = item.quantity
+    item.quantity = payload.quantity
+    await db.flush()
+
+    # Audit log
+    db.add(AuditLog(
+        actor_id=user.id,
+        actor_username=user.username,
+        action="ORDER_ITEM_QUANTITY_UPDATED",
+        entity_type="order_item",
+        entity_id=str(item.id),
+        details={
+            "session_id": str(item.session_id),
+            "product_name": item.product_name_snapshot,
+            "old_quantity": float(old_quantity),
+            "new_quantity": float(item.quantity),
+            "unit_price": float(item.unit_price_snapshot),
+        },
+    ))
+    await db.flush()
+    await sync_session_invoice(item.session_id, db)
+
+    dispatch_pos_event("ORDER_ITEM_UPDATED", {
+        "session_id": str(item.session_id),
+        "item_id": str(item.id),
+        "product_name": item.product_name_snapshot,
+        "quantity": float(item.quantity),
+        "line_total": float(item.unit_price_snapshot * item.quantity),
+    })
+
+    return {
+        "id": item.id,
+        "product_name": item.product_name_snapshot,
+        "quantity": item.quantity,
+        "line_total": item.unit_price_snapshot * item.quantity,
+    }
 
 
 @router.post("/order-items/{item_id}/cancel")
@@ -363,7 +415,7 @@ async def cancel_item(
         details={
             "session_id": str(item.session_id),
             "product_name": item.product_name_snapshot,
-            "quantity": item.quantity,
+            "quantity": float(item.quantity),
             "reason": payload.reason,
             "post_payment_adjustment": float(adjustment_amount) if post_payment else 0,
         },
@@ -375,7 +427,7 @@ async def cancel_item(
         "item_id": str(item.id),
         "session_id": str(item.session_id),
         "product_name": item.product_name_snapshot,
-        "quantity": item.quantity,
+        "quantity": float(item.quantity),
         "post_payment": post_payment,
     })
 

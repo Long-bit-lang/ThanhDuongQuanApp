@@ -19,6 +19,7 @@ import {
   ShoppingCart,
   ArrowLeft,
   ArrowRight,
+  Edit3,
 } from 'lucide-react';
 import { Button } from '../../../shared/components/Button';
 
@@ -62,6 +63,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [cancellingItem, setCancellingItem] = useState<OrderItemData | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [submittingCancel, setSubmittingCancel] = useState(false);
+
+  // Edit quantity modal state
+  const [editingItem, setEditingItem] = useState<OrderItemData | null>(null);
+  const [editingQuantity, setEditingQuantity] = useState<string>('');
+  const [submittingEditQty, setSubmittingEditQty] = useState(false);
 
   // Load products
   const loadProducts = async () => {
@@ -135,7 +141,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       prev
         .map((item) => {
           if (item.product.id === productId) {
-            const newQ = item.quantity + delta;
+            const newQ = Math.round((item.quantity + delta) * 1000) / 1000;
             return newQ > 0 ? { ...item, quantity: newQ } : null;
           }
           return item;
@@ -146,7 +152,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   const setExactQuantity = (productId: string, quantity: number) => {
     if (isNaN(quantity) || quantity <= 0) return;
-    const cleanQty = Math.min(999, Math.max(1, Math.round(quantity)));
+    const cleanQty = Math.min(9999, Math.max(0.001, Math.round(quantity * 1000) / 1000));
     setCart((prev) =>
       prev.map((item) =>
         item.product.id === productId ? { ...item, quantity: cleanQty } : item
@@ -212,6 +218,41 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   };
 
   const formatCurrency = (val: number) => `${Math.round(val).toLocaleString('vi-VN')}đ`;
+
+  const formatQuantity = (qty: number) => {
+    if (Number.isInteger(qty)) return qty.toString();
+    return parseFloat(qty.toFixed(3)).toString();
+  };
+
+  const handleStartEdit = (it: OrderItemData) => {
+    setEditingItem(it);
+    setEditingQuantity(formatQuantity(it.quantity));
+  };
+
+  const handleConfirmEditQuantity = async () => {
+    if (!editingItem || submittingEditQty) return;
+    const q = parseFloat(editingQuantity);
+    if (isNaN(q) || q <= 0) {
+      alert('Vui lòng nhập số lượng hợp lệ lớn hơn 0 (ví dụ: 0.5, 0.22, 1, 24...)');
+      return;
+    }
+    setSubmittingEditQty(true);
+    try {
+      await apiClient.patch(`/order-items/${editingItem.id}/quantity`, {
+        quantity: q,
+      });
+      setOrderSuccessMessage(`Đã cập nhật số lượng món "${editingItem.product_name}" thành ${formatQuantity(q)}!`);
+      setTimeout(() => setOrderSuccessMessage(null), 5000);
+      setEditingItem(null);
+      await loadSession();
+      onRefreshTables();
+    } catch (err: any) {
+      console.error('Failed to update quantity', err);
+      alert(err.response?.data?.detail || 'Không thể cập nhật số lượng món!');
+    } finally {
+      setSubmittingEditQty(false);
+    }
+  };
 
   return (
     <div
@@ -348,7 +389,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             }}
           >
             <Utensils size={15} />
-            Gọi Món Mới {cart.length > 0 && `(${cart.reduce((s, i) => s + i.quantity, 0)})`}
+            Gọi Món Mới {cart.length > 0 && `(${formatQuantity(cart.reduce((s, i) => s + i.quantity, 0))})`}
           </button>
           <button
             onClick={() => setActiveTab('ORDERED_ITEMS')}
@@ -367,7 +408,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             }}
           >
             <History size={15} />
-            Món Đã Gọi ({sessionDetails?.active_items?.reduce((sum, it) => sum + it.quantity, 0) ?? 0})
+            Món Đã Gọi ({formatQuantity(sessionDetails?.active_items?.reduce((sum, it) => sum + it.quantity, 0) ?? 0)})
           </button>
         </div>
 
@@ -882,19 +923,20 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                             </button>
                             <input
                               type="number"
-                              min={1}
-                              max={999}
+                              step="any"
+                              min="0.001"
+                              max="9999"
                               value={item.quantity}
                               onChange={(e) => {
-                                const val = parseInt(e.target.value);
-                                if (!isNaN(val)) {
+                                const val = parseFloat(e.target.value);
+                                if (!isNaN(val) && val > 0) {
                                   setExactQuantity(item.product.id, val);
                                 }
                               }}
                               onFocus={(e) => e.target.select()}
-                              title="Bấm để nhập số lượng trực tiếp"
+                              title="Bấm để nhập số lượng trực tiếp (ví dụ 0.5, 0.22, 24)"
                               style={{
-                                width: isMobile ? '48px' : '44px',
+                                width: isMobile ? '56px' : '52px',
                                 height: isMobile ? '32px' : '26px',
                                 textAlign: 'center',
                                 fontWeight: 800,
@@ -1063,22 +1105,44 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     <div>
                       <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>{it.product_name}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-                        {it.quantity} x {formatCurrency(it.unit_price)}
+                        <span style={{ fontWeight: 800, color: 'var(--text-primary)', background: '#f1f5f9', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                          {formatQuantity(it.quantity)}
+                        </span>{' '}
+                        x {formatCurrency(it.unit_price)}
                         {it.note && <span style={{ color: 'var(--accent-gold)', marginLeft: '0.5rem' }}>• {it.note}</span>}
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <span style={{ fontWeight: 900, fontSize: '1.05rem', color: 'var(--accent-gold)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 900, fontSize: '1.05rem', color: 'var(--accent-gold)', marginRight: '0.35rem' }}>
                         {formatCurrency(it.line_total)}
                       </span>
+                      <button
+                        onClick={() => handleStartEdit(it)}
+                        title="Bấm để chỉnh lại số lượng món này (hỗ trợ số thực như 0.5, 0.22...)"
+                        style={{
+                          padding: '0.4rem 0.65rem',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'rgba(217, 119, 6, 0.12)',
+                          border: '1px solid rgba(217, 119, 6, 0.35)',
+                          color: '#d97706',
+                          fontWeight: 700,
+                          fontSize: '0.775rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                        }}
+                      >
+                        <Edit3 size={13} /> Sửa SL
+                      </button>
                       <button
                         onClick={() => {
                           setCancellingItem(it);
                           setCancelReason('');
                         }}
                         style={{
-                          padding: '0.4rem 0.75rem',
+                          padding: '0.4rem 0.65rem',
                           borderRadius: 'var(--radius-sm)',
                           background: 'rgba(239, 68, 68, 0.15)',
                           border: '1px solid rgba(239, 68, 68, 0.3)',
@@ -1211,6 +1275,193 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   style={{ background: '#ef4444', borderColor: '#ef4444' }}
                 >
                   {submittingCancel ? 'Đang hủy...' : 'Đồng Ý Hủy Món'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Quantity Modal */}
+        {editingItem && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.75)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1100,
+              padding: '1rem',
+            }}
+          >
+            <div
+              className="glass-panel"
+              style={{
+                width: '100%',
+                maxWidth: '440px',
+                padding: '1.75rem',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--accent-gold)',
+                background: '#ffffff',
+                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-gold)' }}>
+                  <Edit3 size={20} />
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>Chỉnh sửa số lượng món</h3>
+                </div>
+                <button
+                  onClick={() => setEditingItem(null)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.25rem', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{editingItem.product_name}</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                  Đơn giá: <strong>{formatCurrency(editingItem.unit_price)}</strong> • Đang phục vụ: <strong>{formatQuantity(editingItem.quantity)}</strong>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                  Nhập số lượng mới (hỗ trợ số thực ví dụ 0.5, 0.22, 1, 24...):
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = parseFloat(editingQuantity) || 0;
+                      const next = cur > 1 ? cur - 1 : Math.max(0.01, cur - 0.1);
+                      setEditingQuantity(formatQuantity(Math.round(next * 100) / 100));
+                    }}
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: 'var(--radius-md)',
+                      background: '#f1f5f9',
+                      border: '1px solid var(--border-subtle)',
+                      fontWeight: 800,
+                      fontSize: '1.1rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Minus size={18} />
+                  </button>
+
+                  <input
+                    type="number"
+                    step="any"
+                    min="0.001"
+                    max="9999"
+                    value={editingQuantity}
+                    onChange={(e) => setEditingQuantity(e.target.value)}
+                    autoFocus
+                    onFocus={(e) => e.target.select()}
+                    placeholder="0.5 hoặc 0.22..."
+                    style={{
+                      flex: 1,
+                      height: '42px',
+                      padding: '0 0.75rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: '2px solid var(--accent-gold)',
+                      fontSize: '1.15rem',
+                      fontWeight: 800,
+                      textAlign: 'center',
+                      outline: 'none',
+                      color: 'var(--text-primary)',
+                      background: '#ffffff',
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = parseFloat(editingQuantity) || 0;
+                      const next = cur >= 1 ? cur + 1 : Math.round((cur + 0.1) * 100) / 100;
+                      setEditingQuantity(formatQuantity(next));
+                    }}
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: 'var(--radius-md)',
+                      background: '#f1f5f9',
+                      border: '1px solid var(--border-subtle)',
+                      fontWeight: 800,
+                      fontSize: '1.1rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
+
+                {/* Quick preset buttons */}
+                <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Gợi ý nhanh:</span>
+                  {[0.22, 0.5, 1, 2, 5, 12, 24].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setEditingQuantity(val.toString())}
+                      style={{
+                        padding: '0.25rem 0.55rem',
+                        borderRadius: 'var(--radius-sm)',
+                        background: editingQuantity === val.toString() ? 'var(--accent-gold)' : '#f1f5f9',
+                        color: editingQuantity === val.toString() ? '#ffffff' : 'var(--text-secondary)',
+                        border: '1px solid var(--border-subtle)',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {val}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Total preview */}
+              <div
+                style={{
+                  padding: '0.85rem 1rem',
+                  borderRadius: 'var(--radius-md)',
+                  background: '#fef3c7',
+                  border: '1px solid #f59e0b',
+                  marginBottom: '1.5rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e' }}>Thành tiền mới:</span>
+                <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#b45309' }}>
+                  {formatCurrency(editingItem.unit_price * (parseFloat(editingQuantity) || 0))}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <Button variant="secondary" size="md" onClick={() => setEditingItem(null)}>
+                  Bỏ qua
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  disabled={submittingEditQty || !parseFloat(editingQuantity) || parseFloat(editingQuantity) <= 0}
+                  onClick={handleConfirmEditQuantity}
+                >
+                  {submittingEditQty ? 'Đang lưu...' : 'Lưu Thay Đổi'}
                 </Button>
               </div>
             </div>

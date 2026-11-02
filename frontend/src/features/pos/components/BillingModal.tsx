@@ -105,6 +105,10 @@ export const BillingModal: React.FC<BillingModalProps> = ({
   };
 
   const formatCurrency = (val?: number) => `${Math.round(val ?? 0).toLocaleString('vi-VN')}đ`;
+  const formatQuantity = (qty: number) => {
+    if (Number.isInteger(qty)) return qty.toString();
+    return parseFloat(qty.toFixed(3)).toString();
+  };
 
   return (
     <div
@@ -241,7 +245,7 @@ export const BillingModal: React.FC<BillingModalProps> = ({
                       }}
                     >
                       <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>{it.product_name}</td>
-                      <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center', fontWeight: 700 }}>{it.quantity}</td>
+                      <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center', fontWeight: 700 }}>{formatQuantity(it.quantity)}</td>
                       <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right', color: 'var(--text-secondary)' }}>
                         {formatCurrency(it.unit_price)}
                       </td>
@@ -525,7 +529,7 @@ export const BillingModal: React.FC<BillingModalProps> = ({
                   <option value="">Toàn bộ hóa đơn</option>
                   {invoice.items?.map((it) => (
                     <option key={it.id} value={it.id}>
-                      {it.product_name} (x{it.quantity} - {formatCurrency(it.line_total)})
+                      {it.product_name} (x{formatQuantity(it.quantity)} - {formatCurrency(it.line_total)})
                     </option>
                   ))}
                 </select>

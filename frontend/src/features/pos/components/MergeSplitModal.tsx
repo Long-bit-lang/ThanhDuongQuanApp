@@ -299,7 +299,7 @@ export const MergeSplitModal: React.FC<MergeSplitModalProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {isSelected ? <CheckSquare size={16} color="var(--accent-gold)" /> : <Square size={16} color="var(--text-muted)" />}
                         <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                          {it.product_name} (x{it.quantity})
+                          {it.product_name} (x{Number.isInteger(it.quantity) ? it.quantity : parseFloat(it.quantity.toFixed(3))})
                         </span>
                       </div>
                       <span style={{ fontWeight: 700, color: 'var(--accent-gold)', fontSize: '0.85rem' }}>

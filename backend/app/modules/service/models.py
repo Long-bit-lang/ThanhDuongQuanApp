@@ -25,7 +25,7 @@ class OrderItem(Base, TimestampMixin):
     product_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("products.id", ondelete="RESTRICT"), nullable=False)
     product_name_snapshot: Mapped[str] = mapped_column(String(160), nullable=False)
     unit_price_snapshot: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
-    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     note: Mapped[Optional[str]] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="ACTIVE")
     cancelled_by_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))

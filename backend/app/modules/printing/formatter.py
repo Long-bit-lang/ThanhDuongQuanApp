@@ -5,6 +5,13 @@ from typing import List
 from app.modules.printing.models import ReceiptData, ReceiptItem
 
 
+def format_quantity(qty: Decimal) -> str:
+    """Formats decimal quantity e.g. 24, 0.5, 0.22 cleanly without unnecessary trailing zeroes."""
+    if qty % 1 == 0:
+        return str(int(qty))
+    return f"{qty:.3f}".rstrip("0").rstrip(".")
+
+
 def format_money(val: Decimal) -> str:
     """Formats decimal to Vietnamese currency string: e.g. 150.000đ."""
     return f"{int(val):,}".replace(",", ".") + "đ"
@@ -40,7 +47,7 @@ def generate_receipt_text(receipt: ReceiptData, width: int = 48) -> str:
     lines.append(divider)
 
     for it in receipt.items:
-        qty_price = f"{it.quantity} x {format_money(it.unit_price)}"
+        qty_price = f"{format_quantity(it.quantity)} x {format_money(it.unit_price)}"
         total_str = format_money(it.line_total)
         # Line 1: Item name
         lines.append(it.name)

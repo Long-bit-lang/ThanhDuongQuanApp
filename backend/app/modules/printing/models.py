@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 class ReceiptItem(BaseModel):
     name: str
-    quantity: int
+    quantity: Decimal
     unit_price: Decimal
     line_total: Decimal
 

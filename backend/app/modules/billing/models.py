@@ -29,7 +29,7 @@ class InvoiceItem(Base):
     order_item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("order_items.id", ondelete="RESTRICT"), nullable=False)
     product_name_snapshot: Mapped[str] = mapped_column(String(160), nullable=False)
     unit_price_snapshot: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
-    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     line_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
 
 

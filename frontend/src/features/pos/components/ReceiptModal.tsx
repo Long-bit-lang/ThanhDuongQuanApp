@@ -77,6 +77,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ invoiceId, onClose }
   };
 
   const formatCurrency = (val: number) => `${Math.round(val).toLocaleString('vi-VN')}đ`;
+  const formatQuantity = (qty: number) => {
+    if (Number.isInteger(qty)) return qty.toString();
+    return parseFloat(qty.toFixed(3)).toString();
+  };
 
   return (
     <div
@@ -235,7 +239,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ invoiceId, onClose }
                       <div style={{ fontWeight: 700 }}>{it.name}</div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#374151' }}>
                         <span>
-                          &nbsp;&nbsp;{it.quantity} x {formatCurrency(it.unit_price)}
+                          &nbsp;&nbsp;{formatQuantity(it.quantity)} x {formatCurrency(it.unit_price)}
                         </span>
                         <span style={{ fontWeight: 700, color: '#111827' }}>{formatCurrency(it.line_total)}</span>
                       </div>

@@ -241,7 +241,7 @@ public class ReceiptBitmapBuilder {
                 if (it == null) continue;
 
                 String name = it.optString("name", "");
-                int qty = it.optInt("quantity", 1);
+                double qty = it.optDouble("quantity", 1);
                 double unitPrice = it.optDouble("unit_price", 0);
                 double lineTotal = it.optDouble("line_total", 0);
 
@@ -256,7 +256,8 @@ public class ReceiptBitmapBuilder {
                 y += sl.getHeight() + 4f;
 
                 // Subline: Qty x Unit price and Line total
-                String leftDetail = "   " + qty + " x " + df.format(unitPrice) + "đ";
+                String qtyStr = (qty == (long) qty) ? String.format("%d", (long) qty) : new DecimalFormat("#.###").format(qty);
+                String leftDetail = "   " + qtyStr + " x " + df.format(unitPrice) + "đ";
                 String rightTotal = df.format(lineTotal) + "đ";
                 y = drawTwoColumnText(canvas, leftDetail, rightTotal, y, 20f, false, true, pText);
                 y += 6f; // Spacing to next item
