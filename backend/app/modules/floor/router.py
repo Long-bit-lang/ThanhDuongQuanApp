@@ -15,6 +15,7 @@ from app.modules.audit.models import AuditLog
 from app.modules.floor.models import DiningTable, ServiceSession, SessionTable
 from app.modules.service.models import Order, OrderItem
 from app.modules.billing.models import Invoice
+from app.modules.billing.services import sync_session_invoice
 from app.modules.floor.schemas import (
     TableResponse,
     OpenSessionResponse,
@@ -340,6 +341,10 @@ async def merge_sessions(
     ))
     await db.flush()
 
+    for s in source_sessions:
+        await sync_session_invoice(s.id, db)
+    await sync_session_invoice(target.id, db)
+
     dispatch_pos_event("SESSION_MERGED", {
         "target_session_id": str(target.id),
         "merged_session_ids": [str(s.id) for s in source_sessions],
@@ -410,6 +415,9 @@ async def split_session(
     ))
     await db.flush()
 
+    await sync_session_invoice(source_session.id, db)
+    await sync_session_invoice(new_session.id, db)
+
     dispatch_pos_event("SESSION_SPLIT", {
         "source_session_id": str(source_session.id),
         "new_session_id": str(new_session.id),
@@ -471,6 +479,9 @@ async def transfer_items(
         },
     ))
     await db.flush()
+
+    await sync_session_invoice(payload.source_session_id, db)
+    await sync_session_invoice(payload.target_session_id, db)
 
     dispatch_pos_event("ITEM_TRANSFERRED", {
         "source_session_id": str(payload.source_session_id),

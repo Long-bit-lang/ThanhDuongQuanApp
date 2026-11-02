@@ -17,6 +17,7 @@ from app.modules.floor.models import DiningTable, ServiceSession, SessionTable
 from app.modules.service.models import Order, OrderItem
 from app.modules.service.schemas import CreateOrder, AddItem, CancelItem, TransferItems
 from app.modules.billing.models import Invoice, InvoiceAdjustment
+from app.modules.billing.services import sync_session_invoice
 
 router = APIRouter(tags=["Service"])
 
@@ -221,6 +222,7 @@ async def create_order(
         details={"session_id": str(session_id), "items": added_items_details},
     ))
     await db.flush()
+    await sync_session_invoice(session_id, db)
 
     dispatch_pos_event("ORDER_CREATED", {
         "order_id": str(order.id),
@@ -298,6 +300,7 @@ async def add_item_to_order(
         },
     ))
     await db.flush()
+    await sync_session_invoice(order.session_id, db)
 
     dispatch_pos_event("ORDER_ITEM_ADDED", {
         "session_id": str(order.session_id),
@@ -366,6 +369,7 @@ async def cancel_item(
         },
     ))
     await db.flush()
+    await sync_session_invoice(item.session_id, db)
 
     dispatch_pos_event("ORDER_ITEM_CANCELLED", {
         "item_id": str(item.id),

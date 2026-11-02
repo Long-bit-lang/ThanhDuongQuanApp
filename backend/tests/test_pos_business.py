@@ -498,3 +498,83 @@ async def test_printing_and_receipt_formatting(
     print_res = res_print.json()
     assert print_res["status"] == "SUCCESS"
     assert print_res["byte_count"] > 0
+
+
+@pytest.mark.asyncio
+async def test_duplicate_and_subsequent_order_items_sync_with_invoice_and_receipt(
+    client: AsyncClient,
+    test_waiter: User,
+    test_cashier: User,
+    test_owner: User,
+):
+    """Verifies that adding duplicate items (quantity accumulation) or new items
+    to an active session immediately reflects in the draft invoice and printed receipt."""
+    # 1. Create product: Bia Huda 15,000 VND
+    huda_res = await client.post(
+        "/api/v1/products",
+        json={"name": f"Bia Huda {uuid.uuid4().hex[:4]}", "sale_price": "15000.00", "is_available": True},
+        headers=auth_headers(test_owner),
+    )
+    assert huda_res.status_code == 201
+    huda_id = huda_res.json()["id"]
+
+    # 2. Open session on an available table
+    tables = (await client.get("/api/v1/tables", headers=auth_headers(test_waiter))).json()
+    table = next(t for t in tables if t["status"] == "AVAILABLE")
+    sess_res = await client.post(f"/api/v1/tables/{table['id']}/open-session", headers=auth_headers(test_waiter))
+    assert sess_res.status_code == 201
+    session_id = sess_res.json()["id"]
+
+    # 3. Order 24 cans of Huda
+    order1_res = await client.post(
+        f"/api/v1/sessions/{session_id}/orders",
+        json={"items": [{"product_id": huda_id, "quantity": 24, "note": "Ướp lạnh"}]},
+        headers=auth_headers(test_waiter),
+    )
+    assert order1_res.status_code == 201
+
+    # 4. Generate draft invoice
+    inv_create_res = await client.post(
+        f"/api/v1/sessions/{session_id}/invoice",
+        headers=auth_headers(test_cashier),
+    )
+    assert inv_create_res.status_code == 201
+    invoice_id = inv_create_res.json()["id"]
+
+    # Check invoice has 24 cans
+    inv_data = (await client.get(f"/api/v1/invoices/{invoice_id}", headers=auth_headers(test_cashier))).json()
+    assert len(inv_data["items"]) == 1
+    assert inv_data["items"][0]["quantity"] == 24
+    assert Decimal(str(inv_data["subtotal"])) == Decimal("360000.00")
+
+    # Check receipt has 24 cans
+    receipt_data = (await client.get(f"/api/v1/invoices/{invoice_id}/receipt", headers=auth_headers(test_cashier))).json()
+    assert len(receipt_data["items"]) == 1
+    assert receipt_data["items"][0]["quantity"] == 24
+    assert Decimal(str(receipt_data["subtotal"])) == Decimal("360000.00")
+
+    # 5. Order 24 MORE cans of Huda (Duplicate item accumulation: 24 -> 48)
+    order2_res = await client.post(
+        f"/api/v1/sessions/{session_id}/orders",
+        json={"items": [{"product_id": huda_id, "quantity": 24, "note": "Thêm đá"}]},
+        headers=auth_headers(test_waiter),
+    )
+    assert order2_res.status_code == 201
+
+    # 6. Verify invoice immediately updated to 48 cans, total 720,000 VND
+    inv_updated = (await client.get(f"/api/v1/invoices/{invoice_id}", headers=auth_headers(test_cashier))).json()
+    assert len(inv_updated["items"]) == 1
+    assert inv_updated["items"][0]["quantity"] == 48
+    assert Decimal(str(inv_updated["subtotal"])) == Decimal("720000.00")
+    assert Decimal(str(inv_updated["final_total"])) == Decimal("720000.00")
+
+    # 7. Verify receipt immediately reflects 48 cans, total 720,000 VND
+    receipt_updated = (await client.get(f"/api/v1/invoices/{invoice_id}/receipt", headers=auth_headers(test_cashier))).json()
+    assert len(receipt_updated["items"]) == 1
+    assert receipt_updated["items"][0]["quantity"] == 48
+    assert Decimal(str(receipt_updated["subtotal"])) == Decimal("720000.00")
+    assert Decimal(str(receipt_updated["final_total"])) == Decimal("720000.00")
+
+    # Clean up: close session
+    await client.post(f"/api/v1/sessions/{session_id}/close", headers=auth_headers(test_waiter))
+

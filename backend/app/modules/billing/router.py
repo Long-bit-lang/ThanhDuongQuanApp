@@ -19,25 +19,10 @@ from app.modules.billing.schemas import DiscountRequest, AdjustmentRequest
 from app.modules.payments.models import Payment
 from app.modules.printing.models import ReceiptData, ReceiptItem, ReceiptPayment
 from app.modules.printing.formatter import generate_receipt_text
+from app.modules.billing.services import recompute_invoice_totals, sync_invoice_with_session
 
 router = APIRouter(tags=["Billing"])
 ROLES = ("OWNER", "CASHIER")
-
-
-async def recompute_invoice_totals(invoice: Invoice, db: AsyncSession) -> None:
-    subtotal = await db.scalar(
-        select(func.coalesce(func.sum(InvoiceItem.line_total), 0)).where(InvoiceItem.invoice_id == invoice.id)
-    )
-    discounts = await db.scalar(
-        select(func.coalesce(func.sum(Discount.amount), 0)).where(Discount.invoice_id == invoice.id)
-    )
-    adjustments = await db.scalar(
-        select(func.coalesce(func.sum(InvoiceAdjustment.amount), 0)).where(InvoiceAdjustment.invoice_id == invoice.id)
-    )
-    invoice.subtotal = Decimal(subtotal)
-    invoice.discount_total = Decimal(discounts)
-    invoice.total_after_discount = max(Decimal("0"), invoice.subtotal - invoice.discount_total)
-    invoice.adjustment_total = Decimal(adjustments)
 
 
 @router.post("/sessions/{session_id}/invoice", status_code=status.HTTP_201_CREATED)
@@ -51,8 +36,10 @@ async def create_invoice(
     if not session:
         raise HTTPException(status_code=404, detail="Không tìm thấy phiên phục vụ")
 
-    existing = await db.scalar(select(Invoice).where(Invoice.session_id == session_id))
+    existing = await db.scalar(select(Invoice).where(Invoice.session_id == session_id).with_for_update())
     if existing:
+        if existing.status != "PAID":
+            await sync_invoice_with_session(existing, db)
         return {"id": existing.id, "invoice_number": existing.invoice_number, "status": existing.status}
 
     active_items = list(
@@ -141,6 +128,9 @@ async def get_invoice(
     invoice = await db.get(Invoice, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Không tìm thấy hóa đơn")
+
+    if invoice.status != "PAID":
+        await sync_invoice_with_session(invoice, db)
 
     items = list((await db.scalars(select(InvoiceItem).where(InvoiceItem.invoice_id == invoice.id))).all())
     discounts = list((await db.scalars(select(Discount).where(Discount.invoice_id == invoice.id))).all())
@@ -317,6 +307,9 @@ async def get_receipt(
     if not invoice:
         raise HTTPException(status_code=404, detail="Không tìm thấy hóa đơn")
 
+    if invoice.status != "PAID":
+        await sync_invoice_with_session(invoice, db)
+
     # Get table names
     memberships = list(
         (await db.scalars(
@@ -327,17 +320,22 @@ async def get_receipt(
     tables = list((await db.scalars(select(DiningTable).where(DiningTable.id.in_(table_ids)))).all()) if table_ids else []
     table_names = [t.display_name for t in tables]
 
-    # Get items
+    # Get items and consolidate identical products (e.g. from merged tables)
     invoice_items = list((await db.scalars(select(InvoiceItem).where(InvoiceItem.invoice_id == invoice.id))).all())
-    receipt_items = [
-        ReceiptItem(
-            name=it.product_name_snapshot,
-            quantity=it.quantity,
-            unit_price=it.unit_price_snapshot,
-            line_total=it.line_total,
-        )
-        for it in invoice_items
-    ]
+    consolidated: dict[tuple[str, Decimal], ReceiptItem] = {}
+    for it in invoice_items:
+        key = (it.product_name_snapshot, it.unit_price_snapshot)
+        if key in consolidated:
+            consolidated[key].quantity += it.quantity
+            consolidated[key].line_total += it.line_total
+        else:
+            consolidated[key] = ReceiptItem(
+                name=it.product_name_snapshot,
+                quantity=it.quantity,
+                unit_price=it.unit_price_snapshot,
+                line_total=it.line_total,
+            )
+    receipt_items = list(consolidated.values())
 
     # Get payments
     payments = list((await db.scalars(select(Payment).where(Payment.invoice_id == invoice.id))).all())
