@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Thanh Dương Quán POS</string>
+    <string name="printer_connected">Máy in ZYWELL USB đã sẵn sàng</string>
+    <string name="printer_disconnected">Mất kết nối máy in USB</string>
+    <string name="print_success">In hóa đơn thành công</string>
+    <string name="print_failed">In hóa đơn thất bại</string>
+    <string name="settings_title">Cấu hình máy chủ POS</string>
+    <string name="server_url">Địa chỉ máy chủ POS</string>
+    <string name="save">Lưu cấu hình</string>
+    <string name="cancel">Hủy</string>
+</resources>

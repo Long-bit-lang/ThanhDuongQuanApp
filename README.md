@@ -1,40 +1,77 @@
-# Sunmi POS Development
+# THANH ĐƯỜNG QUÁN POS SYSTEM
 
-Local-first modular-monolith project for a restaurant/pub POS system. The target users are Owner, Cashier and Waiter; the intended devices include desktop browsers, iPhone, Android, and later a SUNMI T1-G.
+Hệ thống quản lý bán hàng (POS) chuyên nghiệp dành cho mô hình quán nhậu Việt Nam, phục vụ đồng thời Nhân viên Phục vụ (Mobile Web PWA trên iPhone/Android), Thu ngân (SUNMI T1-G Desktop/Tablet POS) và Chủ quán (Quản trị & Báo cáo tài chính).
 
-## Current phase
+---
 
-**Phase 1 is complete.** The platform foundation is operational with FastAPI, SQLAlchemy 2.x, Alembic, PostgreSQL 16 (via Docker Compose), and React TypeScript Vite frontend.
-See the full report: [Phase 1 Implementation Report](documentation/PHASE_1_REPORT.md).
+## 1. Công nghệ sử dụng
 
-Read these first:
+- **Backend**: Python 3.14/3.12+, FastAPI, SQLAlchemy 2.x Async, Alembic, PostgreSQL 16 (Docker Compose), Pydantic v2, Argon2id, PyJWT (HS256).
+- **Frontend**: React 19, TypeScript, Vite, CSS Design System, Responsive Mobile-First & Tablet/Desktop Layout, Lucide React.
+- **Realtime**: WebSocket Event Dispatcher tự động đồng bộ hóa trạng thái bàn, đơn gọi và thanh toán giữa các thiết bị.
+- **In ấn & Phần cứng**: Cầu nối in hóa đơn nhiệt 80mm ESC/POS UTF-8, ZYWELL ZY-Q822 USB Adapter & máy POS SUNMI T1-G (Android 6.0.1).
 
-- [Project overview](documentation/PROJECT_OVERVIEW.md)
-- [Architecture](documentation/ARCHITECTURE.md)
-- [Business rules](documentation/BUSINESS_RULES.md)
-- [Development plan](documentation/DEVELOPMENT_PLAN.md)
-- [Android and printer environment report](documentation/ENVIRONMENT_REPORT.md)
-- [Phase 1 report](documentation/PHASE_1_REPORT.md)
+---
 
-## Proposed local stack
+## 2. Tài liệu kỹ thuật dự án (`documentation/`)
 
-- Backend: Python, FastAPI, SQLAlchemy, Alembic, PostgreSQL
-- Frontend: React, TypeScript, Vite, CSS Design System
-- Local runtime: Docker Compose (PostgreSQL 16)
+- [Kiến trúc hệ thống (ARCHITECTURE.md)](documentation/ARCHITECTURE.md)
+- [Thiết kế Cơ sở dữ liệu 16 bảng (DATABASE_SCHEMA.md)](documentation/DATABASE_SCHEMA.md)
+- [Đặc tả API Reference (API_REFERENCE.md)](documentation/API_REFERENCE.md)
+- [Bảo mật & Phân quyền RBAC (SECURITY.md)](documentation/SECURITY.md)
+- [Hướng dẫn triển khai mạng LAN & Docker (DEPLOYMENT.md)](documentation/DEPLOYMENT.md)
+- [Tích hợp Máy in nhiệt ZYWELL & SUNMI T1-G (PRINTER_INTEGRATION.md)](documentation/PRINTER_INTEGRATION.md)
+- [Báo cáo Kiểm thử tự động 43/43 Tests (TEST_REPORT.md)](documentation/TEST_REPORT.md)
+- [Hướng dẫn vận hành nghiệp vụ (USER_GUIDE.md)](documentation/USER_GUIDE.md)
+- [Hướng dẫn triển khai Online & Vận hành SUNMI/Điện thoại (DEPLOYMENT_AND_USER_GUIDE.md)](documentation/DEPLOYMENT_AND_USER_GUIDE.md)
 
-## Planned layout
+---
 
-```text
-sunmi-pos-development/
-├── backend/                 # FastAPI application (Phase 1)
-├── frontend/                # React application (Phase 1)
-├── infrastructure/          # Compose and local runtime files (Phase 1)
-├── documentation/           # Architecture, rules, plans, reports
-├── printer-test/            # Reserved for later printer work
-└── zywell-sdk/              # Official resources; do not treat as app code
+## 3. Khởi động nhanh (Quick Start)
+
+### 3.1. Khởi động PostgreSQL Container
+```bash
+docker compose -f infrastructure/compose.yaml up -d
 ```
 
-## Phase 1 prerequisites
+### 3.2. Cập nhật Database & Khởi tạo Chủ quán
+```bash
+cd backend
+source .venv/bin/activate
+alembic upgrade head
 
-Docker Compose must be installed and the current user must have permission to access the Docker daemon. The exact corrective action will be proposed for approval before any system change.
-# ThanhDuongQuanApp
+# Khởi tạo tài khoản Chủ quán ban đầu (an toàn qua CLI)
+PYTHONPATH=. python -m app.modules.identity.cli bootstrap-owner
+```
+
+### 3.3. Chạy Backend API Server
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### 3.4. Chạy Frontend POS Client
+```bash
+cd ../frontend
+npm install
+npm run dev -- --host 0.0.0.0 --port 5173
+```
+
+---
+
+## 4. Chạy kiểm thử tự động (Automated Tests)
+
+```bash
+# Backend test suite (43/43 tests passed)
+PYTHONPATH=backend backend/.venv/bin/pytest backend/tests/ -v
+
+# Frontend build & TypeScript check (0 errors)
+cd frontend
+npm run build
+```
+
+---
+
+## 5. Quy tắc bảo vệ Codebase
+- Thư mục `zywell-sdk/` là tài nguyên vendor được bảo vệ tuyệt đối: không sửa, xóa, format hoặc commit.
+- Tiền tệ trong database luôn sử dụng `NUMERIC(14, 2)` / `Decimal`, không bao giờ dùng `float`.
+- Lịch sử giao dịch, đơn hàng và thanh toán là bất biến (immutable), không xóa bản ghi phát sinh.

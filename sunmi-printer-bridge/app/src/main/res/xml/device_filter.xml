@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ZYWELL ZY-Q822 USB thermal printer -->
+    <usb-device vendor-id="1155" product-id="22339" />
+    <usb-device vendor-id="1155" />
+    <!-- Common USB thermal printer class (0x07 Printer Class) -->
+    <usb-device class="7" subclass="1" />
+</resources>

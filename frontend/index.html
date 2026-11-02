@@ -2,11 +2,18 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Thanh Đường Quán - Hệ Thống POS Quản Lý Quán Nhậu</title>
-    <meta name="description" content="Thanh Đường Quán POS - Nền tảng quản lý quán nhậu vận hành cục bộ trên Ubuntu, tối ưu hóa cho Desktop, Mobile và SUNMI POS." />
-    <!-- Modern Typography: Inter font -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#b45309" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="TDQ POS" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Thanh Dương Quán - Hệ Thống POS Quản Lý Quán Nhậu</title>
+    <meta name="description" content="Thanh Dương Quán POS - Nền tảng quản lý quán nhậu tối ưu hóa cho Mobile, Desktop và SUNMI POS." />
+    <!-- Modern Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -14,5 +21,15 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register service worker if supported
+      if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch((err) => {
+            console.log('SW registration skipped:', err);
+          });
+        });
+      }
+    </script>
   </body>
 </html>

@@ -67,3 +67,10 @@ lerna-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+.neon
+
+# Android & Gradle
+.gradle/
+**/build/
+local.properties
+scratch/

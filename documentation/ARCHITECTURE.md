@@ -1,61 +1,98 @@
-# Architecture
+# THANH ĐƯỜNG QUÁN POS - KIẾN TRÚC HỆ THỐNG (SYSTEM ARCHITECTURE)
 
-## Chosen shape: modular monolith
+## 1. Tổng quan kiến trúc (High-Level Overview)
 
-One FastAPI deployment and one PostgreSQL database are appropriate for the expected scale. Modules own application services, policies, repositories, API schemas, and tests, while sharing a single transaction boundary where an operation crosses modules. This avoids premature microservice complexity without blocking later extraction.
+Hệ thống **Thanh Đường Quán POS** được thiết kế theo kiến trúc **Modular Monolith** kết hợp với **Event-Driven WebSocket Broadcast** và **API-First RESTful Backend**, tối ưu hóa cho quy mô quán nhậu 50 bàn, 5–10 nhân viên (tối đa 5 nhân viên thao tác đồng thời trên di động và máy tính tiền POS chuyên dụng).
 
 ```text
-React PWA-ready client
-        │ REST + WebSocket
-        ▼
-FastAPI API layer ── authentication / RBAC / validation
-        ▼
-Application services ── transactions / idempotency / concurrency checks
-        ▼
-Domain modules ── accounts, catalog, tables, service, billing, payments,
-                  reporting, printing, audit
-        ▼
-Repositories ── SQLAlchemy
-        ▼
-PostgreSQL ── Alembic migrations + seed data
+┌────────────────────────────────────────────────────────────────────────┐
+│                        FRONTEND CLIENT TIER                            │
+│  - Phục vụ (Waiters): Mobile Web PWA (iPhone / Android)                │
+│  - Thu ngân (Cashiers): SUNMI T1-G Desktop / Tablet View               │
+│  - Chủ quán (Owner): Full Management & Financial Control               │
+└───────────────────▲───────────────────────────────▲────────────────────┘
+                    │ REST API (JSON)               │ WebSocket Events
+                    │ HttpOnly Refresh Cookie       │ (State Synchronization)
+                    │ In-Memory Access & CSRF       │
+┌───────────────────▼───────────────────────────────▼────────────────────┐
+│                       BACKEND API & SECURITY TIER                      │
+│                    FastAPI (Python 3.14 / 3.12+)                       │
+│  - Security Engine: Argon2id, JWT (HS256), Synchronizer Token CSRF    │
+│  - Invariant Guard: PostgreSQL Transaction Advisory Lock (Owner Guard) │
+│  - Concurrency Controller: SELECT FOR UPDATE & Idempotency Key Engine  │
+│  - WebSocket Connection & Broadcast Hub                                │
+└───────────────────▲───────────────────────────────▲────────────────────┘
+                    │                               │
+                    ▼ Domain Operations             ▼ Printing Commands
+┌──────────────────────────────────────┐  ┌──────────────────────────────┐
+│        MODULAR MONOLITH CORES        │  │     PRINTING SUBSYSTEM       │
+│  - Identity (RBAC: OWNER, CASHIER,   │  │  - Receipt DTO Builder       │
+│    WAITER)                           │  │  - ESC/POS Formatter (80mm)  │
+│  - Catalog (Menu & Availability)     │  │  - ZywellPos80Adapter        │
+│  - Floor (50 Tables B01-B50)         │  │  - MockPrinterService        │
+│  - Service (Rounds, Items, History)  │  │  - SUNMI T1-G Bridge Spec    │
+│  - Billing (Invoices, Discounts)     │  └──────────────┬───────────────┘
+│  - Payments (Cash & VietQR Mock)     │                 │ (Hardware USB-A/B)
+│  - Reporting (Financial Breakdown)   │                 ▼
+│  - Audit (Append-Only Event Ledger)  │  ┌──────────────────────────────┐
+└───────────────────▲──────────────────┘  │ ZYWELL ZY-Q822 USB (80mm)    │
+                    │ SQLAlchemy 2.x Async└──────────────────────────────┘
+                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                        PERSISTENCE TIER                                │
+│                   PostgreSQL 16 (Docker Container)                     │
+│  - 16 Core Normalized Tables with NUMERIC Currency                     │
+│  - Strict Check Constraints & Foreign Keys                             │
+│  - Advisory Locks & Distributed Login Rate Limiting                    │
+│  - Alembic Migration Engine                                            │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Backend module boundaries
+---
 
-| Module | Responsibility |
-| --- | --- |
-| `identity` | Users, password hashes, sessions/tokens, roles and policies |
-| `catalog` | Categories, menu items, sale availability and image metadata |
-| `floor` | Tables and table state projection |
-| `service` | Service sessions, order batches, order lines, cancellation, merge/split/transfer history |
-| `billing` | Bill snapshots, line/bill discounts, adjustments and post-payment cancellation |
-| `payments` | Single payment record and local VietQR mock; never creates automatic refund |
-| `reporting` | Revenue query/read models, role enforcement and date ranges |
-| `printing` | Receipt rendering, preview and mock print adapter; no device SDK dependency initially |
-| `audit` | Append-only important-action records |
+## 2. Phân ranh giới các module Backend (`backend/app/modules/`)
 
-Routes remain thin: parse input, call an application service, serialize output. Business calculations and permission checks live in services/domain policies, not routes.
+| Module | Nhiệm vụ chính | Quy tắc nghiệp vụ then chốt |
+|---|---|---|
+| **`identity`** | Quản lý người dùng, phân quyền (OWNER, CASHIER, WAITER), xác thực Argon2id, JWT, refresh rotation, CSRF token. | Khóa advisory lock `8472910384720192` bảo đảm tối thiểu 1 active OWNER. Rate limit 5 lần/15 phút trên DB. |
+| **`audit`** | Ghi nhận nhật ký kiểm toán bất biến (append-only audit log). | Không có API cập nhật hoặc xóa nhật ký kiểm toán. |
+| **`catalog`** | Quản lý thực đơn, giá bán, mô tả, trạng thái còn/hết món và lưu trữ (archive). | Không xóa vật lý món đã có lịch sử giao dịch; món hết hàng không cho phép đặt mới. |
+| **`floor`** | Quản lý sơ đồ 50 bàn (`B01` - `B50`), trạng thái `AVAILABLE`/`OCCUPIED`, mở/đóng phiên, gộp bàn, tách bàn, chuyển món. | Một bàn chỉ có tối đa 1 phiên active; gộp/tách bàn thực thi nguyên tử trong transaction. |
+| **`service`** | Quản lý các lượt gọi món (order rounds) và chi tiết món (`order_items`). | Lưu snapshot tên món và đơn giá tại thời điểm gọi; hủy món giữ nguyên lịch sử, không xóa bản ghi. |
+| **`billing`** | Tổng hợp hóa đơn cuối cùng của phiên, áp dụng giảm giá (phần trăm/cố định, theo món/hóa đơn), ghi nhận điều chỉnh sau thanh toán. | Tiền tệ sử dụng `NUMERIC(14, 2)` / `Decimal`; chỉ 1 hóa đơn chính thức cho 1 phiên. |
+| **`payments`** | Xác nhận thanh toán Tiền mặt (CASH) và VietQR MOCK; chống thanh toán trùng lặp. | Idempotency key bắt buộc; không tự ý tạo refund; giữ nguyên payment gốc khi hủy món sau thanh toán. |
+| **`reporting`** | Báo cáo doanh thu thuần, tổng hóa đơn, tổng thanh toán và chênh lệch điều chỉnh. | Chỉ OWNER và CASHIER được truy cập; WAITER bị chặn ở backend. |
+| **`printing`** | Chuyển đổi hóa đơn sang định dạng in nhiệt 80mm, tạo chuỗi byte ESC/POS tiếng Việt, cung cấp adapter cho máy in ZYWELL ZY-Q822 và SUNMI T1-G. | Không gọi SDK native trực tiếp từ backend Python; backend cung cấp dữ liệu định dạng chuẩn và mock test. |
 
-## Data integrity design
+---
 
-- Monetary values use PostgreSQL `NUMERIC`, Python `Decimal`, and string-safe JSON serialization; never float.
-- Order lines snapshot item name and unit price at ordering time.
-- Menu items with transaction history are archived/hidden, not deleted.
-- Payment records and finalized bill history are immutable facts; later changes are represented by adjustments and audit records.
-- Multi-record actions execute in database transactions.
-- Service-session/table mutation locks relevant rows (`SELECT ... FOR UPDATE`) and uses a version/revision field to reject stale concurrent client updates.
-- Create-order and confirm-payment calls require an idempotency key stored with the resulting operation.
+## 3. Kiến trúc Realtime & Đồng bộ hóa Thiết bị (WebSocket)
 
-## Local networking
+- **Hub quản lý**: `ConnectionManager` trong `backend/app/core/events.py` quản lý danh sách WebSocket kết nối từ các thiết bị phục vụ và thu ngân.
+- **Xác thực kết nối**: WebSocket client truyền token xác thực; backend kiểm tra trạng thái active và danh tính người dùng.
+- **Các sự kiện broadcast tự động**:
+  - `TABLE_STATUS_CHANGED`: Bàn đổi trạng thái (trống/có khách/tổng tiền cập nhật).
+  - `SESSION_OPENED` / `SESSION_CLOSED`: Phiên phục vụ bắt đầu hoặc kết thúc.
+  - `ORDER_CREATED` / `ORDER_ITEM_CANCELLED`: Có món mới gọi từ nhân viên hoặc món bị hủy.
+  - `SESSION_MERGED` / `SESSION_SPLIT` / `ITEM_TRANSFERRED`: Thay đổi cơ cấu bàn hoặc chuyển món giữa các bàn.
+  - `INVOICE_CREATED` / `PAYMENT_CONFIRMED`: Hóa đơn được xuất hoặc thanh toán thành công.
+  - `PRODUCT_AVAILABILITY_CHANGED`: Món được đánh dấu hết hàng hoặc mở bán lại.
+- **Khả năng chịu lỗi (Resilience)**:
+  - Frontend tự động reconnect khi mất kết nối mạng.
+  - Không phụ thuộc WebSocket để bảo toàn dữ liệu: REST API và Database luôn là nguồn chân lý (Source of Truth). Sau khi reconnect, frontend tự động tải lại dữ liệu phiên hiện tại.
 
-In Phase 1 the frontend is configured with a runtime API base URL, not a hard-coded `localhost` value. Compose publishes services on all host interfaces; the browser on a phone reaches `http://192.168.1.22:<port>` on the same Wi-Fi. CORS origins are an explicit local-development allowlist. Production origin policy is deferred.
+---
 
-## Proposed dependencies (Phase 1 approval required)
+## 4. Kiến trúc Frontend (React 19 + TypeScript + Vite)
 
-Backend: FastAPI, Uvicorn, SQLAlchemy 2.x, Alembic, asyncpg or psycopg, Pydantic Settings, passlib with Argon2, PyJWT or a server-side secure-session implementation, pytest, httpx, and testcontainers or a dedicated PostgreSQL test service.
-
-Frontend: React, TypeScript, Vite, React Router, TanStack Query, Tailwind CSS, and a small form/validation pair such as React Hook Form plus Zod. Dependency versions will be selected only when scaffolding starts, based on compatibility with installed Python 3.14 and Node 24.
-
-## Printing boundary
-
-The `printing` module receives a normalized receipt document and delegates to a `PrinterAdapter` interface. The initial adapter renders a preview and records a mock print result. A later Android/SUNMI adapter may depend on the official ZYWELL SDK without changing billing logic. Real hardware success is never inferred from mock output.
+- **Cấu trúc Feature-Driven**:
+  - `src/features/auth`: State quản lý phiên đăng nhập trong bộ nhớ (in-memory access token & CSRF token), cơ chế single-flight refresh token.
+  - `src/features/pos`: Sơ đồ 50 bàn, giỏ hàng cảm ứng, đặt món, thanh toán, xem trước hóa đơn in.
+  - `src/features/menu`: Quản lý thực đơn cho Thu ngân & Chủ quán.
+  - `src/features/staff`: Quản lý nhân viên dành riêng cho Chủ quán.
+  - `src/features/reports`: Báo cáo tài chính doanh thu quán.
+  - `src/features/audit`: Tra cứu audit log kiểm toán hệ thống.
+  - `src/features/health` & `src/features/dashboard`: Bảng điều khiển kiểm tra hệ thống Phase 1 (được bảo tồn đầy đủ).
+- **Responsive Layout**:
+  - Giao diện Phục vụ: Tối ưu cảm ứng trên điện thoại di động (iPhone / Android) với nút bấm lớn, giỏ hàng dạng trượt.
+  - Giao diện Thu ngân: Tối ưu cho màn hình cảm ứng POS SUNMI T1-G (14-inch) và máy tính để bàn.

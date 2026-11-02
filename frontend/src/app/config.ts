@@ -4,7 +4,7 @@
  */
 
 export const config = {
-  appName: 'Thanh Đường Quán POS',
+  appName: 'Thanh Dương Quán POS',
   phase: 'Phase 1: Khởi Tạo Nền Tảng',
   version: '0.1.0',
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
