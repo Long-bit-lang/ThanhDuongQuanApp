@@ -4,7 +4,8 @@ Local-first modular-monolith project for a restaurant/pub POS system. The target
 
 ## Current phase
 
-**Phase 0 is complete.** This repository currently contains planning documents and separately preserved ZYWELL printer resources. No backend, frontend, database schema, Docker configuration, or business implementation has been created.
+**Phase 1 is complete.** The platform foundation is operational with FastAPI, SQLAlchemy 2.x, Alembic, PostgreSQL 16 (via Docker Compose), and React TypeScript Vite frontend.
+See the full report: [Phase 1 Implementation Report](documentation/PHASE_1_REPORT.md).
 
 Read these first:
 
@@ -13,14 +14,13 @@ Read these first:
 - [Business rules](documentation/BUSINESS_RULES.md)
 - [Development plan](documentation/DEVELOPMENT_PLAN.md)
 - [Android and printer environment report](documentation/ENVIRONMENT_REPORT.md)
+- [Phase 1 report](documentation/PHASE_1_REPORT.md)
 
 ## Proposed local stack
 
 - Backend: Python, FastAPI, SQLAlchemy, Alembic, PostgreSQL
-- Frontend: React, TypeScript, Vite, Tailwind CSS
-- Local runtime: Docker Compose (after Docker Compose is made available)
-
-No command exists yet to run the application because Phase 1 has not been authorized.
+- Frontend: React, TypeScript, Vite, CSS Design System
+- Local runtime: Docker Compose (PostgreSQL 16)
 
 ## Planned layout
 
