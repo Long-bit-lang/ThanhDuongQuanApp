@@ -142,13 +142,17 @@ export const BillingModal: React.FC<BillingModalProps> = ({
       >
         {/* Header */}
         <div
+          className="modal-header-responsive"
           style={{
-            padding: isMobile ? '0.75rem 1rem' : '1.25rem 1.5rem',
+            padding: isMobile
+              ? 'calc(env(safe-area-inset-top, 0px) + 0.65rem) 1rem 0.65rem 1rem'
+              : '1.25rem 1.5rem',
             borderBottom: '1px solid var(--border-subtle)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             background: '#ffffff',
+            flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -190,7 +194,7 @@ export const BillingModal: React.FC<BillingModalProps> = ({
             Không thể tải hóa đơn. Vui lòng đóng và thử lại.
           </div>
         ) : (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '1rem 0.75rem' : '1.5rem' }}>
             {/* Status indicator */}
             {invoice.status === 'PAID' && (
               <div
@@ -379,8 +383,11 @@ export const BillingModal: React.FC<BillingModalProps> = ({
         {/* Footer */}
         {invoice && (
           <div
+            className="modal-footer-responsive"
             style={{
-              padding: isMobile ? '0.85rem 1rem' : '1.25rem 1.5rem',
+              padding: isMobile
+                ? '0.85rem 1rem calc(env(safe-area-inset-bottom, 0px) + 0.85rem) 1rem'
+                : '1.25rem 1.5rem',
               borderTop: '1px solid var(--border-subtle)',
               background: '#ffffff',
               display: 'flex',
@@ -388,6 +395,7 @@ export const BillingModal: React.FC<BillingModalProps> = ({
               justifyContent: 'space-between',
               gap: '0.75rem',
               flexWrap: 'wrap',
+              flexShrink: 0,
             }}
           >
             <Button

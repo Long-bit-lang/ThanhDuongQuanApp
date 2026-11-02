@@ -114,13 +114,17 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ invoiceId, onClose }
       >
         {/* Top bar */}
         <div
+          className="modal-header-responsive"
           style={{
-            padding: '1rem 1.25rem',
+            padding: isMobile
+              ? 'calc(env(safe-area-inset-top, 0px) + 0.65rem) 1rem 0.65rem 1rem'
+              : '1rem 1.25rem',
             borderBottom: '1px solid var(--border-subtle)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             background: '#ffffff',
+            flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -326,13 +330,17 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ invoiceId, onClose }
 
         {/* Footer Actions */}
         <div
+          className="modal-footer-responsive"
           style={{
-            padding: '1rem 1.25rem',
+            padding: isMobile
+              ? '0.85rem 1rem calc(env(safe-area-inset-bottom, 0px) + 0.85rem) 1rem'
+              : '1rem 1.25rem',
             borderTop: '1px solid var(--border-subtle)',
             background: '#ffffff',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            flexShrink: 0,
           }}
         >
           <Button variant="secondary" size="md" onClick={onClose}>

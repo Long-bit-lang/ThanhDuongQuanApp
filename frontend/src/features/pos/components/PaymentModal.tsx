@@ -104,7 +104,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           height: isMobile ? '100dvh' : undefined,
           maxHeight: isMobile ? '100dvh' : '92vh',
           overflowY: 'auto',
-          padding: isMobile ? '1.25rem 1rem' : '2rem',
+          padding: isMobile
+            ? 'calc(env(safe-area-inset-top, 0px) + 0.85rem) 1rem calc(env(safe-area-inset-bottom, 0px) + 1.25rem) 1rem'
+            : '2rem',
           borderRadius: isMobile ? 0 : 'var(--radius-xl)',
           border: isMobile ? 'none' : '1px solid var(--border-glow)',
           boxShadow: '0 25px 60px rgba(0, 0, 0, 0.85)',

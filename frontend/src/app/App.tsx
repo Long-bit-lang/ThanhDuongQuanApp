@@ -143,6 +143,7 @@ const MainPOSApp: React.FC = () => {
     <div className="app-container">
       {/* Top Header */}
       <header
+        className="app-header-responsive"
         style={{
           borderBottom: '1px solid var(--border-subtle)',
           background: '#ffffff',

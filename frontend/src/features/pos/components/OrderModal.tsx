@@ -284,32 +284,47 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       >
         {/* Header */}
         <div
+          className="modal-header-responsive"
           style={{
-            padding: isMobile ? '0.75rem 1rem' : '1.25rem 1.5rem',
+            padding: isMobile
+              ? 'calc(env(safe-area-inset-top, 0px) + 0.65rem) 1rem 0.65rem 1rem'
+              : '1.25rem 1.5rem',
             borderBottom: '1px solid var(--border-subtle)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             background: '#ffffff',
             gap: '0.5rem',
+            flexShrink: 0,
           }}
         >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.4rem' : '0.75rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: 900, color: 'var(--accent-gold)' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.35rem' : '0.75rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: isMobile ? '1.2rem' : '1.5rem', fontWeight: 900, color: 'var(--accent-gold)' }}>
                 {table.code}
               </span>
-              <span style={{ fontSize: isMobile ? '0.95rem' : '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              <span
+                style={{
+                  fontSize: isMobile ? '0.925rem' : '1.1rem',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  maxWidth: isMobile ? '135px' : undefined,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
                 {table.display_name}
               </span>
               <span
                 style={{
-                  fontSize: '0.7rem',
+                  fontSize: '0.68rem',
                   fontWeight: 700,
-                  padding: '0.15rem 0.5rem',
+                  padding: '0.12rem 0.45rem',
                   borderRadius: 'var(--radius-sm)',
                   background: table.payment_status === 'PAID' ? '#d1fae5' : 'rgba(217, 119, 6, 0.12)',
                   color: table.payment_status === 'PAID' ? '#065f46' : '#b45309',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {table.payment_status === 'PAID' ? '✓ Đã TT' : 'Đang phục vụ'}
@@ -323,13 +338,20 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.4rem' : '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.35rem' : '0.75rem', flexShrink: 0 }}>
             {canBill && sessionDetails && (
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => onOpenBilling(sessionDetails)}
                 icon={<Receipt size={14} />}
+                style={{
+                  padding: isMobile ? '0.45rem 0.75rem' : undefined,
+                  fontSize: isMobile ? '0.825rem' : undefined,
+                  fontWeight: 800,
+                  boxShadow: '0 2px 8px rgba(217, 119, 6, 0.25)',
+                  whiteSpace: 'nowrap',
+                }}
               >
                 {isMobile ? 'Tính tiền' : 'Lập Hóa Đơn & Tính Tiền'}
               </Button>
@@ -342,12 +364,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 border: 'none',
                 color: 'var(--text-secondary)',
                 borderRadius: '50%',
-                width: isMobile ? '32px' : '36px',
-                height: isMobile ? '32px' : '36px',
+                width: isMobile ? '34px' : '36px',
+                height: isMobile ? '34px' : '36px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
+                flexShrink: 0,
               }}
             >
               <X size={isMobile ? 18 : 20} />
@@ -362,6 +385,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             background: '#ffffff',
             borderBottom: '1px solid var(--border-subtle)',
             padding: isMobile ? '0 0.5rem' : '0 1.5rem',
+            flexShrink: 0,
           }}
         >
           <button
@@ -370,7 +394,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               if (isMobile) setMobileOrderView('CATALOG');
             }}
             style={{
-              padding: isMobile ? '0.65rem 0.85rem' : '0.875rem 1.25rem',
+              flex: isMobile ? 1 : 'none',
+              padding: isMobile ? '0.65rem 0.5rem' : '0.875rem 1.25rem',
               background: 'none',
               border: 'none',
               borderBottom: activeTab === 'NEW_ORDER' ? '3px solid var(--accent-gold)' : '3px solid transparent',
@@ -380,6 +405,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: isMobile ? 'center' : 'flex-start',
               gap: '0.35rem',
             }}
           >
@@ -389,7 +415,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           <button
             onClick={() => setActiveTab('ORDERED_ITEMS')}
             style={{
-              padding: isMobile ? '0.65rem 0.85rem' : '0.875rem 1.25rem',
+              flex: isMobile ? 1 : 'none',
+              padding: isMobile ? '0.65rem 0.5rem' : '0.875rem 1.25rem',
               background: 'none',
               border: 'none',
               borderBottom: activeTab === 'ORDERED_ITEMS' ? '3px solid var(--accent-gold)' : '3px solid transparent',
@@ -399,6 +426,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: isMobile ? 'center' : 'flex-start',
               gap: '0.35rem',
             }}
           >
@@ -535,7 +563,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </div>
 
                   {/* Category Filter Pills */}
-                  <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.5rem', overflowX: 'auto', paddingBottom: '0.15rem' }}>
+                  <div className="mobile-scroll-x" style={{ display: 'flex', gap: '0.35rem', marginTop: '0.5rem', overflowX: 'auto', paddingBottom: '0.15rem' }}>
                     <button
                       type="button"
                       onClick={() => setCategoryFilter('ALL')}
@@ -691,9 +719,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 {isMobile && cart.length > 0 && (
                   <div
                     onClick={() => setMobileOrderView('CART')}
+                    className="modal-footer-responsive"
                     style={{
                       flexShrink: 0,
-                      padding: '0.85rem 1rem',
+                      padding: '0.85rem 1rem calc(env(safe-area-inset-bottom, 0px) + 0.85rem) 1rem',
                       background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                       color: '#ffffff',
                       display: 'flex',
@@ -989,9 +1018,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
                 {/* Cart Footer with Prominent Confirmation Button */}
                 <div
+                  className="modal-footer-responsive"
                   style={{
                     flexShrink: 0,
-                    padding: isMobile ? '0.85rem 1rem' : '1.15rem 1.25rem',
+                    padding: isMobile
+                      ? '0.85rem 1rem calc(env(safe-area-inset-bottom, 0px) + 0.85rem) 1rem'
+                      : '1.15rem 1.25rem',
                     borderTop: '1px solid var(--border-subtle)',
                     background: '#ffffff',
                     boxShadow: '0 -4px 15px rgba(0, 0, 0, 0.04)',
@@ -1041,7 +1073,18 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           </div>
         ) : (
           /* Tab: Ordered Items */
-          <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: isMobile
+                ? '0.85rem 0.75rem calc(env(safe-area-inset-bottom, 0px) + 1.5rem) 0.75rem'
+                : '1.5rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
               <div>
                 <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>Danh sách món đã gọi của bàn</h3>
