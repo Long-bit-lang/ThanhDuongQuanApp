@@ -359,8 +359,9 @@ async def get_receipt(
     creator = await db.get(User, invoice.created_by_id)
     cashier_name = creator.full_name if creator else current_user.full_name
 
-    # Official QR code URL for Thanh Dương Quán
+    # Official QR code URL and EMVCo payload for Thanh Dương Quán (Vietcombank 0161001729608)
     qr_code_url = "/qr/official_qr.png"
+    qr_code_data = "00020101021138570010A00000072701270006970436011301610017296080208QRIBFTTA53037045802VN6304B290"
 
     receipt = ReceiptData(
         invoice_number=invoice.invoice_number,
@@ -379,6 +380,7 @@ async def get_receipt(
         balance_due=balance_due,
         difference=difference,
         qr_code_url=qr_code_url,
+        qr_code_data=qr_code_data,
     )
     receipt.formatted_text = generate_receipt_text(receipt)
     return receipt

@@ -41,6 +41,7 @@ class ReceiptData(BaseModel):
     difference: Decimal
     thank_you_note: str = "CẢM ƠN QUÝ KHÁCH — HẸN GẶP LẠI!"
     qr_code_url: Optional[str] = None
+    qr_code_data: Optional[str] = None
     formatted_text: Optional[str] = None
 
 

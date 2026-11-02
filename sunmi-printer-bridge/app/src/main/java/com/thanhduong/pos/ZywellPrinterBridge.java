@@ -1,6 +1,7 @@
 package com.thanhduong.pos;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
@@ -10,6 +11,7 @@ import android.webkit.JavascriptInterface;
 import net.posprinter.posprinterface.IMyBinder;
 import net.posprinter.posprinterface.ProcessData;
 import net.posprinter.posprinterface.TaskCallback;
+import net.posprinter.utils.BitmapToByteData;
 import net.posprinter.utils.DataForSendToPrinterPos80;
 
 import org.json.JSONArray;
@@ -66,11 +68,32 @@ public class ZywellPrinterBridge {
 
         try {
             JSONObject json = new JSONObject(receiptJson);
-            byte[] escposBytes = buildReceiptBytes(json);
-            return executeUsbPrint(escposBytes);
+            // Render high-clarity 80mm monochrome bitmap with native Vietnamese font and QR code
+            Bitmap receiptBitmap = ReceiptBitmapBuilder.buildReceiptBitmap(context, json);
+            byte[] rasterBmp = DataForSendToPrinterPos80.printRasterBmp(
+                0,
+                receiptBitmap,
+                BitmapToByteData.BmpType.Threshold,
+                BitmapToByteData.AlignType.Center,
+                576
+            );
+            return executeUsbPrint(rasterBmp);
         } catch (Exception e) {
             Log.e(TAG, "Error formatting receipt", e);
             return errorResponse("Lỗi định dạng hóa đơn: " + e.getMessage());
+        }
+    }
+
+    @JavascriptInterface
+    public String printReceiptEscPos(String base64) {
+        if (!isPrinterReady()) {
+            return errorResponse("Máy in ZYWELL chưa kết nối hoặc chưa cấp quyền USB.");
+        }
+        try {
+            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
+            return executeUsbPrint(bytes);
+        } catch (Exception e) {
+            return errorResponse("Lỗi dữ liệu ESC/POS: " + e.getMessage());
         }
     }
 
@@ -81,19 +104,17 @@ public class ZywellPrinterBridge {
         }
 
         try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            out.write(new byte[]{0x1B, 0x40}); // ESC @: Init
-            out.write(new byte[]{0x1B, 0x61, 0x01}); // Center align
-            out.write(new byte[]{0x1B, 0x21, 0x30}); // Double height + bold
-            out.write("THANH DUONG QUAN\n".getBytes("UTF-8"));
-            out.write(new byte[]{0x1B, 0x21, 0x00}); // Normal font
-            out.write("--------------------------------\n".getBytes("UTF-8"));
-            out.write("KIEM TRA MAY IN ZYWELL ZY-Q822\n".getBytes("UTF-8"));
-            out.write("Kho giay: 80mm | Dao cat tu dong\n".getBytes("UTF-8"));
-            out.write("Trang thai: HOAT DONG TOT\n".getBytes("UTF-8"));
-            out.write("--------------------------------\n\n\n\n".getBytes("UTF-8"));
-            return executeUsbPrint(out.toByteArray());
+            Bitmap testBitmap = ReceiptBitmapBuilder.buildTestReceiptBitmap(context);
+            byte[] rasterBmp = DataForSendToPrinterPos80.printRasterBmp(
+                0,
+                testBitmap,
+                BitmapToByteData.BmpType.Threshold,
+                BitmapToByteData.AlignType.Center,
+                576
+            );
+            return executeUsbPrint(rasterBmp);
         } catch (Exception e) {
+            Log.e(TAG, "Lỗi in thử", e);
             return errorResponse("Lỗi in thử: " + e.getMessage());
         }
     }
@@ -122,18 +143,31 @@ public class ZywellPrinterBridge {
             @Override
             public List<byte[]> processDataBeforeSend() {
                 List<byte[]> list = new ArrayList<>();
-                list.add(printData);
-                // Feed 3 lines & Perform Auto Cut (GS V 66 1)
-                list.add(new byte[]{0x1B, 0x64, 0x03}); // ESC d 3
+                // 1. Initialize printer (ESC @)
+                list.add(new byte[]{0x1B, 0x40});
+
+                // 2. Chunk data to avoid USB bulkTransfer buffer overflow
+                final int CHUNK_SIZE = 4096;
+                int offset = 0;
+                while (offset < printData.length) {
+                    int len = Math.min(CHUNK_SIZE, printData.length - offset);
+                    byte[] chunk = new byte[len];
+                    System.arraycopy(printData, offset, chunk, 0, len);
+                    list.add(chunk);
+                    offset += len;
+                }
+
+                // 3. Feed 4 lines & Perform Auto Cut (GS V 66 1)
+                list.add(new byte[]{0x1B, 0x64, 0x04});
                 list.add(DataForSendToPrinterPos80.selectCutPagerModerAndCutPager(66, 1));
                 return list;
             }
-        }, 8000);
+        }, 15000);
 
         try {
-            boolean done = latch.await(9, TimeUnit.SECONDS);
+            boolean done = latch.await(16, TimeUnit.SECONDS);
             if (!done) {
-                return errorResponse("Hết thời gian chờ phản hồi từ máy in (Timeout 9s).");
+                return errorResponse("Hết thời gian chờ phản hồi từ máy in (Timeout 16s).");
             }
         } catch (InterruptedException e) {
             return errorResponse("Tiến trình in bị gián đoạn.");
@@ -143,7 +177,7 @@ public class ZywellPrinterBridge {
             JSONObject res = new JSONObject();
             try {
                 res.put("success", true);
-                res.put("message", "In hóa đơn và cắt giấy thành công.");
+                res.put("message", "In hóa đơn tiếng Việt và mã VietQR thành công (đã cắt giấy)!");
             } catch (Exception ignored) {}
             return res.toString();
         } else {

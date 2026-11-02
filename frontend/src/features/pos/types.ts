@@ -121,5 +121,6 @@ export interface ReceiptData {
   difference: number;
   thank_you_note: string;
   qr_code_url?: string;
+  qr_code_data?: string;
   formatted_text?: string;
 }
