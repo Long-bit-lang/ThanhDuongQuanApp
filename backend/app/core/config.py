@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     )
 
     # CORS configuration
-    CORS_ORIGINS: List[str] = Field(
+    CORS_ORIGINS: Union[List[str], str] = Field(
         default=[
             "http://localhost:5173",
             "http://127.0.0.1:5173",
