@@ -24,7 +24,7 @@ async def test_direct_health_endpoint(client: AsyncClient) -> None:
     data = response.json()
     assert data["status"] == "healthy"
     assert data["database"]["status"] == "connected"
-    assert data["database"]["database"] == "thanh_duong_pos"
+    assert data["database"]["database"] in ("thanh_duong_pos", "neondb")
 
 
 @pytest.mark.asyncio
@@ -49,7 +49,7 @@ async def test_api_v1_health_db_endpoint(client: AsyncClient) -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "connected"
-    assert data["database"] == "thanh_duong_pos"
+    assert data["database"] in ("thanh_duong_pos", "neondb")
     assert "latency_ms" in data
     assert "version" in data
 

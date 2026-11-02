@@ -47,6 +47,14 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://pos_user:pos_password@localhost:5432/thanh_duong_pos",
         description="Async SQLAlchemy database URL (asyncpg)",
     )
+    DATABASE_URL_UNPOOLED: str = Field(
+        default="",
+        description="Direct unpooled database URL (recommended for migrations)",
+    )
+    NEON_BRANCH: str = Field(
+        default="",
+        description="Neon branch name",
+    )
     SYNC_DATABASE_URL: str = Field(
         default="postgresql+psycopg://pos_user:pos_password@localhost:5432/thanh_duong_pos",
         description="Sync SQLAlchemy database URL for Alembic and sync tools (psycopg)",
@@ -71,6 +79,20 @@ class Settings(BaseSettings):
         if isinstance(value, str) and value.strip().lower() in {"release", "production", "prod"}:
             return False
         return value
+
+    @field_validator("DATABASE_URL", "DATABASE_URL_UNPOOLED", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: object) -> object:
+        if not value or not isinstance(value, str):
+            return value
+        trimmed = value.strip()
+        if not trimmed:
+            return trimmed
+        if trimmed.startswith("postgresql://"):
+            return "postgresql+psycopg://" + trimmed[len("postgresql://"):]
+        if trimmed.startswith("postgres://"):
+            return "postgresql+psycopg://" + trimmed[len("postgres://"):]
+        return trimmed
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

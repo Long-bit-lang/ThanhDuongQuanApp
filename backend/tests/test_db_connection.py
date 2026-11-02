@@ -22,6 +22,6 @@ async def test_check_db_connection_function() -> None:
     """Verifies the check_db_connection utility directly."""
     status_info = await check_db_connection()
     assert status_info["status"] == "connected"
-    assert status_info["database"] == "thanh_duong_pos"
+    assert status_info["database"] in ("thanh_duong_pos", "neondb")
     assert "PostgreSQL" in status_info["version"]
     assert status_info["latency_ms"] >= 0
