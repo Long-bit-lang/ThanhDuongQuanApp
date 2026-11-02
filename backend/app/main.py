@@ -140,6 +140,12 @@ if FRONTEND_DIST.exists():
         # Check if the requested path matches an actual static file in dist
         static_file = FRONTEND_DIST / full_path
         if full_path and static_file.is_file():
+            if full_path.endswith(".apk"):
+                return FileResponse(
+                    static_file,
+                    media_type="application/vnd.android.package-archive",
+                    filename="thanh-duong-pos.apk",
+                )
             return FileResponse(static_file)
         # Otherwise serve index.html for SPA client-side routing
         index_file = FRONTEND_DIST / "index.html"

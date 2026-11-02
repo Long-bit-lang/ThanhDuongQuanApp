@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../AuthContext';
-import { Lock, User, LogIn, AlertCircle } from 'lucide-react';
+import { Lock, User, LogIn, AlertCircle, Download } from 'lucide-react';
 import { Button } from '../../../shared/components/Button';
 
 export const LoginForm: React.FC = () => {
@@ -184,6 +184,25 @@ export const LoginForm: React.FC = () => {
           >
             {loading ? 'Đang xác thực...' : 'Đăng Nhập POS'}
           </Button>
+
+          <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)', textAlign: 'center' }}>
+            <a
+              href="/sunmi-pos.apk"
+              download="thanh-duong-pos.apk"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                color: 'var(--brand-amber)',
+                fontSize: '0.825rem',
+                textDecoration: 'none',
+                fontWeight: 500,
+                opacity: 0.9,
+              }}
+            >
+              <Download size={15} /> Tải ứng dụng POS cho máy SUNMI T1-G (.apk)
+            </a>
+          </div>
         </form>
       </div>
     </div>
