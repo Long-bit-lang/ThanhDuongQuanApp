@@ -3,12 +3,41 @@
  * Reads API and WebSocket endpoints from Vite environment variables.
  */
 
+const getApiBaseUrl = (): string => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== 'undefined') {
+    // If running in Vite local dev server on port 5173, point to local backend
+    if (window.location.port === '5173') {
+      return `http://${window.location.hostname}:8000`;
+    }
+    // Single-origin production (Render / Docker): relative URL
+    return '';
+  }
+  return 'http://localhost:8000';
+};
+
+const getWsBaseUrl = (): string => {
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL;
+  }
+  if (typeof window !== 'undefined') {
+    if (window.location.port === '5173') {
+      return `ws://${window.location.hostname}:8000`;
+    }
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${window.location.host}`;
+  }
+  return 'ws://localhost:8000';
+};
+
 export const config = {
   appName: 'Thanh Dương Quán POS',
   phase: 'Phase 1: Khởi Tạo Nền Tảng',
   version: '0.1.0',
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
-  wsBaseUrl: import.meta.env.VITE_WS_URL || 'ws://localhost:8000',
+  apiBaseUrl: getApiBaseUrl(),
+  wsBaseUrl: getWsBaseUrl(),
   endpoints: {
     health: '/api/v1/health',
     healthDb: '/api/v1/health/db',

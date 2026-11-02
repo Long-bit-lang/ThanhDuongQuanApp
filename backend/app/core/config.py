@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import List, Union
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import json
 
@@ -65,12 +65,15 @@ class Settings(BaseSettings):
     )
 
     # CORS configuration
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://192.168.1.22:5173",
-    ]
+    CORS_ORIGINS: List[str] = Field(
+        default=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3000",
+            "http://192.168.1.22:5173",
+        ],
+        validation_alias=AliasChoices("CORS_ORIGINS", "CORS_ALLOWED_ORIGINS"),
+    )
 
     @field_validator("DEBUG", mode="before")
     @classmethod

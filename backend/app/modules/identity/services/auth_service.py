@@ -85,8 +85,14 @@ def verify_origin(origin: Optional[str], referer: Optional[str]) -> None:
     if not target:
         return  # Allow same-origin / non-browser requests without origin header if CORS matches
 
+    if "*" in settings.CORS_ORIGINS or any(o == "*" for o in settings.CORS_ORIGINS):
+        return
+
     parsed = urlparse(target)
     target_origin = f"{parsed.scheme}://{parsed.netloc}"
+
+    if parsed.netloc.endswith(".onrender.com"):
+        return
 
     allowed_origins = [urlparse(o).netloc for o in settings.CORS_ORIGINS]
     if parsed.netloc not in allowed_origins and target_origin not in settings.CORS_ORIGINS:
