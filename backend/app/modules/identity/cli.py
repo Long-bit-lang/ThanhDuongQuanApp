@@ -104,9 +104,56 @@ async def bootstrap_owner(target_username: Optional[str] = None) -> None:
         print(f"✅ KHỞI TẠO THÀNH CÔNG: Tài khoản OWNER '{username}' đã được tạo an toàn.")
 
 
+async def reset_password(target_username: str) -> None:
+    """Interactively resets the password for a user via CLI."""
+    print("=" * 60)
+    print("THANH DƯƠNG QUÁN POS — ĐẶT LẠI MẬT KHẨU")
+    print("=" * 60)
+
+    async with AsyncSessionLocal() as session:
+        user = await session.scalar(select(User).where(User.username == target_username))
+        if not user:
+            print(f"❌ LỖI: Không tìm thấy người dùng '{target_username}' trong hệ thống.")
+            sys.exit(1)
+
+        password = getpass.getpass(f"Nhập mật khẩu mới cho '{target_username}': ")
+        confirm_password = getpass.getpass("Xác nhận lại mật khẩu mới: ")
+
+        if password != confirm_password:
+            print("❌ LỖI: Mật khẩu xác nhận không trùng khớp.")
+            sys.exit(1)
+
+        try:
+            validate_password_strength(password)
+        except ValueError as exc:
+            print(f"❌ LỖI: {exc}")
+            sys.exit(1)
+
+        user.password_hash = hash_password(password)
+        audit_entry = AuditLog(
+            actor_id=None,
+            actor_username="SYSTEM_CLI",
+            action="USER_PASSWORD_RESET_CLI",
+            entity_type="user",
+            entity_id=str(user.id),
+            details={"username": user.username, "reset_via": "CLI"},
+            ip_address="127.0.0.1",
+        )
+        session.add(audit_entry)
+        await session.commit()
+        print(f"✅ THÀNH CÔNG: Đã đặt lại mật khẩu mới cho tài khoản '{target_username}'.")
+
+
 def main():
-    username_arg = sys.argv[1] if len(sys.argv) > 1 else None
-    asyncio.run(bootstrap_owner(username_arg))
+    if len(sys.argv) > 1 and sys.argv[1] == "reset-password":
+        username = sys.argv[2] if len(sys.argv) > 2 else "admin"
+        asyncio.run(reset_password(username))
+    elif len(sys.argv) > 1 and sys.argv[1] == "bootstrap-owner":
+        username = sys.argv[2] if len(sys.argv) > 2 else None
+        asyncio.run(bootstrap_owner(username))
+    else:
+        username_arg = sys.argv[1] if len(sys.argv) > 1 else None
+        asyncio.run(bootstrap_owner(username_arg))
 
 
 if __name__ == "__main__":
