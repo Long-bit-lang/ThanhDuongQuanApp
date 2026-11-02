@@ -18,7 +18,7 @@ from app.modules.billing.models import Invoice, InvoiceItem, Discount, InvoiceAd
 from app.modules.billing.schemas import DiscountRequest, AdjustmentRequest
 from app.modules.payments.models import Payment
 from app.modules.printing.models import ReceiptData, ReceiptItem, ReceiptPayment
-from app.modules.printing.formatter import generate_receipt_text
+from app.modules.printing.formatter import generate_receipt_text, format_vietnam_time, VIETNAM_TZ
 from app.modules.billing.services import recompute_invoice_totals, sync_invoice_with_session
 
 router = APIRouter(tags=["Billing"])
@@ -50,7 +50,7 @@ async def create_invoice(
     if not active_items:
         raise HTTPException(status_code=409, detail="Không có món hợp lệ (chưa bị hủy) để lập hóa đơn")
 
-    invoice_number = f"TDQ-{datetime.now(timezone.utc).strftime('%y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
+    invoice_number = f"TDQ-{datetime.now(VIETNAM_TZ).strftime('%y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
     invoice = Invoice(
         invoice_number=invoice_number,
         session_id=session_id,
@@ -344,7 +344,7 @@ async def get_receipt(
             method=p.method,
             amount=p.amount,
             status=p.status,
-            time=p.created_at.strftime("%d/%m/%Y %H:%M:%S"),
+            time=format_vietnam_time(p.created_at),
         )
         for p in payments
     ]
@@ -364,7 +364,7 @@ async def get_receipt(
     receipt = ReceiptData(
         invoice_number=invoice.invoice_number,
         invoice_id=str(invoice.id),
-        date_time=invoice.created_at.strftime("%d/%m/%Y %H:%M:%S"),
+        date_time=format_vietnam_time(invoice.created_at),
         table_names=table_names,
         cashier_name=cashier_name,
         items=receipt_items,

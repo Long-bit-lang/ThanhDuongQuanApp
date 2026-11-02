@@ -2,7 +2,18 @@
 
 from decimal import Decimal
 from typing import List
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from app.modules.printing.models import ReceiptData, ReceiptItem
+
+VIETNAM_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
+
+
+def format_vietnam_time(dt: datetime, fmt: str = "%d/%m/%Y %H:%M:%S") -> str:
+    """Converts a database UTC datetime to Vietnam local timezone (Asia/Ho_Chi_Minh) and formats it."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(VIETNAM_TZ).strftime(fmt)
 
 
 def format_quantity(qty: Decimal) -> str:
